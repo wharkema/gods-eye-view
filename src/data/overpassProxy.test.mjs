@@ -12,6 +12,7 @@ import {
   simplifyOverpassPayloadBody,
   isOverpassBoundaryQuery,
   resolveOverpassPreflight,
+  isOverpassSuccess,
 } from '../../vite.config.js';
 
 test('preflight checks memory, in-flight, then disk before consuming limiter quota', async () => {
@@ -199,3 +200,33 @@ function pointSegDistDeg(p, a, b) {
   const t = c1 / c2;
   return Math.hypot(wx - t * vx, wy - t * vy);
 }
+
+// overpass-api.de began answering 406 to generic clients (Oct 2026). The proxy
+// cached every status below 500, so one 406 was then served instantly forever —
+// from memory and from disk across restarts — and the traffic layer never loaded.
+test('only 2xx answers count as cacheable successes', () => {
+  assert.equal(isOverpassSuccess({ status: 200, body: '{}' }), true);
+  assert.equal(isOverpassSuccess({ body: '{}' }), true, 'no status: legacy success');
+  for (const status of [400, 403, 404, 406, 429, 500, 504]) {
+    assert.equal(isOverpassSuccess({ status, body: '' }), false, String(status));
+  }
+  assert.equal(isOverpassSuccess({ status: 200, rateLimited: true }), false);
+  assert.equal(isOverpassSuccess({ status: 200, runtimeError: true }), false);
+  assert.equal(isOverpassSuccess(null), false);
+});
+
+test('preflight never serves a cached refusal from memory', async () => {
+  const key = 'q';
+  let limiterCalls = 0;
+  const result = await resolveOverpassPreflight({
+    cacheKey: key,
+    memoryCache: new Map([[key, { status: 406, body: '<html>', cachedAt: 990 }]]),
+    inFlight: new Map(),
+    readDisk: async () => null,
+    allowUpstream: () => { limiterCalls += 1; return true; },
+    now: 1000,
+    cacheMs: 60_000,
+  });
+  assert.equal(result.source, 'UPSTREAM');
+  assert.equal(limiterCalls, 1);
+});
