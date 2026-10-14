@@ -10,6 +10,8 @@
  * refuses to load.
  */
 
+import { withBase } from '../basePath.js';
+
 /** @type {Worker|null} */
 let _worker = null;
 /** @type {Map<number, {resolve: Function, reject: Function}>} */
@@ -63,7 +65,10 @@ export async function loadLayerData(kind, url) {
   _nextId += 1;
   return new Promise((resolve, reject) => {
     _pending.set(id, { resolve, reject });
-    worker.postMessage({ id, kind, url });
+    // A worker resolves '/api/…' against the site root, not the app's sub-path:
+    // hand it the absolute URL the page itself would use.
+    const target = typeof location === 'undefined' ? url : new URL(withBase(url), location.href).href;
+    worker.postMessage({ id, kind, url: target });
   });
 }
 

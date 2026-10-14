@@ -1,3 +1,5 @@
+// First: rewrites root-absolute requests when the app runs under a sub-path.
+import './basePath.js';
 import * as Cesium from 'cesium';
 import {
   applyAntialiasing,
@@ -38,6 +40,7 @@ import { initFreeVoice, shouldUseFreeVoice } from './voice/freeVoice.js';
 import { MapStackController } from './mapStackController.js';
 import { initAnnotations } from './annotations/index.js';
 import { initLogoGaze } from './logoGaze.js';
+import { initLogoutButton } from './login/logoutButton.js';
 import { initCockpitCloudEffects } from './cockpitCloudEffects.js';
 import {
   installRenderGovernor,
@@ -50,6 +53,7 @@ import { installScopeMask } from './scopeMask.js';
 import { initFirstRunExperience } from './firstRunExperience.js';
 
 initLogoGaze();
+initLogoutButton();
 
 /**
  * Extract a human-readable error message from any thrown value.

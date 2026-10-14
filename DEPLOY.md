@@ -71,5 +71,11 @@ PORT=8080 npm start
 ```
 
 Railway and Fly.io need only that plus the same environment variables.
+
+### Docker / your own server
+
+`Dockerfile` and `docker-compose.yml` run the app behind a login (`APP_GEBRUIKERS`,
+see `.env.example`) on `127.0.0.1:8019`, meant for a reverse proxy on a sub-path.
+The full walkthrough for a Synology NAS is in [docs/deploy-nas.md](docs/deploy-nas.md).
 Vercel and Cloudflare Pages do **not** fit without porting the middleware to
 their serverless function formats.

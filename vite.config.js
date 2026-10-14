@@ -44,6 +44,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { defineConfig, loadEnv } from 'vite';
 import cesium from 'vite-plugin-cesium';
+import { loginGate } from './src/login/plugin.js';
 import { normalizeRadioCountryInput } from './src/data/radioCountry.js';
 import {
   normalizeRegionalArticles,
@@ -9275,7 +9276,7 @@ function alsoServeInPreview(plugin) {
  * plugins, configures the dev server host/port, and exposes selected
  * API keys to the client as import.meta.env defines.
  */
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   // Load only this checkout's dotenv files. Shell/Keychain values still win,
   // and no sibling workspace is consulted implicitly.
   const loaded = loadEnv(mode, __dirname, '');
@@ -9284,7 +9285,14 @@ export default defineConfig(({ mode }) => {
   }
   const env = { ...process.env };
   return {
+    // A relative base lets one build run at the site root and behind a reverse
+    // proxy on a sub-path (wharkema.nl/gods-eye-view/); src/basePath.js covers
+    // the root-absolute URLs in the source. Dev keeps '/', which Vite requires.
+    base: command === 'build' ? './' : '/',
     plugins: [
+      // First: nothing below answers a request without a session (when on).
+      loginGate(),
+      ...[
       cesium(),
       openSkyProxy(),
       celestrakProxy(),
@@ -9311,7 +9319,8 @@ export default defineConfig(({ mode }) => {
       airportsData(),
       productionHeaders(),
       openRouterProxy(),
-    ].map((plugin, index) => (index === 0 ? plugin : alsoServeInPreview(plugin))),
+      ].map((plugin, index) => (index === 0 ? plugin : alsoServeInPreview(plugin))),
+    ],
     server: {
       host: env.HOST || 'localhost',
       port: parseInt(env.PORT, 10) || 5173,
