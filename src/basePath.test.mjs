@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { withBase } from './basePath.js';
+import { basePathFromModuleUrl, withBase } from './basePath.js';
 
 const PAGE = 'https://wharkema.nl/gods-eye-view/';
 const BASE = '/gods-eye-view/';
@@ -37,4 +37,10 @@ test('relative, already-prefixed, cross-origin and data URLs pass through', () =
 
 test('at the site root nothing changes', () => {
   assert.equal(withBase('/api/x', '/', 'http://localhost:4173/'), '/api/x');
+});
+
+test('the base comes from the built chunk URL', () => {
+  assert.equal(basePathFromModuleUrl('https://wharkema.nl/gods-eye-view/assets/index-abc.js'), '/gods-eye-view/');
+  assert.equal(basePathFromModuleUrl('http://localhost:4173/assets/index-abc.js'), '/');
+  assert.equal(basePathFromModuleUrl('not a url'), '/');
 });
