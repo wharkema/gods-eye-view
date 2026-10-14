@@ -1218,6 +1218,7 @@ export function deriveTrafficFlowError(error) {
   const status = Number(message.match(/HTTP (\d{3})/)?.[1]);
   if (status === 503) return 'TomTom key unavailable';
   if (status === 429) return 'TomTom daily budget reached';
+  if (status === 401 || status === 403) return 'TomTom refused the key — check its settings';
   if (status === 502 || status === 504) return 'TomTom upstream unreachable';
   if (Number.isFinite(status)) return `TomTom flow error (HTTP ${status})`;
   return 'TomTom flow unavailable';
@@ -2107,6 +2108,9 @@ async function loadRoadsForBounds(bounds, altitude, trace = null) {
         }
       } catch (e) {
         if (e?.name === 'AbortError') return;
+        // Say what is wrong now, not after the Overpass fallback has spent
+        // minutes trying mirrors: the chip reads "SIMULATED — <reason>".
+        _flowError = deriveTrafficFlowError(e);
         console.warn('[Data:Traffic] TomTom road geometry failed, trying Overpass:', e?.message || e);
       }
     }

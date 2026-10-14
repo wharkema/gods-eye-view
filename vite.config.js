@@ -1985,7 +1985,17 @@ function tomtomProxy() {
       + `${z}/${x}/${y}.pbf?key=${encodeURIComponent(process.env.TOMTOM_API_KEY)}`;
     recordUpstreamFetch(); // attempts count — upstream bills the request either way
     const res = await fetch(url, { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // TomTom names the reason (e.g. InvalidReferer when the key carries a
+      // domain whitelist, which a server-side request can never satisfy).
+      let reason = '';
+      try {
+        reason = String(JSON.parse(await res.text())?.detailedError?.code || '').replace(/[^\w-]/g, '').slice(0, 40);
+      } catch { /* not JSON */ }
+      const err = new Error(`HTTP ${res.status}${reason ? ` ${reason}` : ''}`);
+      err.status = res.status;
+      throw err;
+    }
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length === 0) throw new Error('empty tile body');
     return buf;
@@ -2079,15 +2089,18 @@ function tomtomProxy() {
               })
               .catch((err) => {
                 console.warn(`[tomtom-proxy] ${key} fetch failed (${err?.message || err}) — serving stale if any`);
-                return null;
+                return { failedStatus: err?.status || 0 };
               })
               .finally(() => inflight.delete(key)));
           }
           const fresh = await inflight.get(key);
-          if (fresh) {
+          if (fresh?.buf) {
             sendTile(fresh.buf, 'MISS');
           } else if (entry) {
             sendTile(entry.buf, 'STALE-ERROR'); // upstream down — stale beats empty
+          } else if (fresh?.failedStatus === 401 || fresh?.failedStatus === 403) {
+            // The key itself is refused: say so, instead of "unreachable".
+            sendJson(403, { error: 'key_rejected' });
           } else {
             sendJson(502, { error: 'upstream' });
           }
