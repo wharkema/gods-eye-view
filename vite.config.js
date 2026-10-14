@@ -175,6 +175,8 @@ const OVERPASS_BOUNDARY_DISK_TTL_MS = 30 * 86_400_000;
 const OVERPASS_DISK_DIR = path.join(process.cwd(), '.gev-cache', 'overpass');
 /** Per-upstream fetch timeout (ms). */
 const OVERPASS_TIMEOUT_MS = 22000;
+/** Descriptive client identity; Overpass mirrors refuse generic agents (HTTP 406). */
+const OVERPASS_USER_AGENT = 'GodsEyeView/1.0 (+https://github.com/wharkema/gods-eye-view)';
 /** Max entries in the Overpass response cache (LRU-like, oldest evicted first). */
 const OVERPASS_CACHE_MAX_ENTRIES = 120;
 /** @type {Map<string,{status:number,body:string,contentType:string,endpoint:string,cachedAt:number}>} */
@@ -296,11 +298,24 @@ function overpassDiskPath(cacheKey) {
  * serve-stale path when every mirror is down).
  * @returns {Promise<?Object>} Payload with cachedAt, or null.
  */
+/**
+ * Whether an Overpass payload is a real answer worth caching or serving from
+ * cache: 2xx, not rate-limited, no runtime error. Payloads without a status
+ * (none are written that way) count as successful.
+ */
+export function isOverpassSuccess(payload) {
+  if (!payload || payload.rateLimited || payload.runtimeError) return false;
+  const status = payload.status ?? 200;
+  return status >= 200 && status < 300;
+}
+
 async function readOverpassDisk(cacheKey, maxAgeMs) {
   try {
     const raw = await fsp.readFile(overpassDiskPath(cacheKey), 'utf8');
     const payload = JSON.parse(raw);
     if (!payload || typeof payload.body !== 'string' || !Number.isFinite(payload.cachedAt)) return null;
+    // Older versions also cached refusals (406); never serve those again.
+    if (!isOverpassSuccess(payload)) return null;
     if (Date.now() - payload.cachedAt > maxAgeMs) return null;
     return payload;
   } catch {
@@ -341,7 +356,9 @@ export async function resolveOverpassPreflight({
   cacheMs = OVERPASS_CACHE_MS,
 }) {
   const cached = memoryCache.get(cacheKey);
-  if (cached && now - cached.cachedAt <= cacheMs) return { source: 'HIT', payload: cached };
+  if (cached && isOverpassSuccess(cached) && now - cached.cachedAt <= cacheMs) {
+    return { source: 'HIT', payload: cached };
+  }
 
   const pending = inFlight.get(cacheKey);
   if (pending) return { source: 'INFLIGHT', payload: await pending };
@@ -2781,7 +2798,10 @@ async function fetchOverpassPayload(body, maxResponseBytes = OVERPASS_MAX_RESPON
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'gods-eye-view-overpass-proxy/1.0',
+          // overpass-api.de answers 406 to clients without a descriptive
+          // User-Agent and an Accept header (policy since Oct 2026).
+          'User-Agent': OVERPASS_USER_AGENT,
+          Accept: 'application/json, text/plain;q=0.9, */*;q=0.8',
         },
         body,
         signal: controller.signal,
@@ -2811,7 +2831,9 @@ async function fetchOverpassPayload(body, maxResponseBytes = OVERPASS_MAX_RESPON
         lastError = new Error(`Overpass runtime error (${endpoint})`);
         continue;
       }
-      if (status >= 500) {
+      // 5xx, and a mirror refusing this client (403/406), mean "try the next
+      // mirror" — not an answer to hand back or cache.
+      if (status >= 500 || status === 403 || status === 406) {
         lastError = new Error(`Overpass upstream returned ${status} (${endpoint})`);
         continue;
       }
@@ -2920,7 +2942,9 @@ function overpassProxy() {
           _overpassConcurrent += 1;
           const requestPromise = fetchOverpassPayload(safeBody)
             .then((payload) => {
-              if (payload.status < 500 && !payload.rateLimited && !payload.runtimeError) {
+              // Only real answers are cached: a cached refusal (e.g. 406) would be
+              // served instantly forever, from memory and from disk across restarts.
+              if (isOverpassSuccess(payload)) {
                 const entry = { ...payload, cachedAt: Date.now() };
                 _overpassCache.set(cacheKey, entry);
                 trimOverpassCache();
