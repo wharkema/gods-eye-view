@@ -634,6 +634,23 @@ function estimateRoadLengthDeg(coords) {
 
 // ─── Dot Spawning ──────────────────────────────────────────
 
+/** OSM classes of streets that only matter to the picture when congested. */
+const LOCAL_ROAD_TYPES = new Set(['residential', 'unclassified', 'living_street', 'service']);
+
+/**
+ * Live mode: a local street with free-flowing traffic gets no dots. The dot
+ * count is a visual density, not a vehicle count, so filling every quiet
+ * village street made a calm place look busy. Through roads always keep their
+ * dots; a local street appears as soon as TomTom reports it slow or jammed.
+ *
+ * @param {string} type - OSM highway class of the road.
+ * @param {{level:number}|null|undefined} flow - Matched live flow, if any.
+ * @returns {boolean}
+ */
+export function isQuietLocalRoad(type, flow) {
+  return Boolean(flow) && LOCAL_ROAD_TYPES.has(type) && flowBucket(flow.level) === 'free';
+}
+
 /**
  * Compute the ideal number of dots for a single road at a given camera altitude.
  *
@@ -651,6 +668,7 @@ function computeDotCount(road, altitude) {
   // untouched (flow stays undefined → multiplier 1, identical output).
   const flow = _liveMode ? road.flow : null;
   if (flow?.closure) return 0;
+  if (isQuietLocalRoad(road.type, flow)) return 0;
   // Strict data-integrity view: uncovered roads spawn nothing when hidden.
   if (_liveMode && !flow && _uncoveredMode === 'hide') return 0;
 
