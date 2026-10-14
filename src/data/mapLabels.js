@@ -23,6 +23,8 @@ import * as Cesium from 'cesium';
  * works when the app runs under a sub-path.
  */
 const CARTO_LABELS_URL = 'api/carto/labels/{z}/{x}/{y}.png';
+/** Layer brightness multiplier that turns CARTO's light-grey names white. */
+const LABEL_BRIGHTNESS = 1.8;
 /** CARTO serves these to z20; asking past it returns 404s, not sharper text. */
 const CARTO_MAX_ZOOM = 20;
 
@@ -46,6 +48,10 @@ function buildImageryLayer() {
   // Labels are an overlay, never a basemap: keep them fully on top and let the
   // photoreal imagery show through everywhere the tile is transparent.
   layer.alpha = 1.0;
+  // CARTO draws the names light grey on a dark halo. Brightening the layer
+  // multiplies every channel, so the grey type clips to white while the dark
+  // halo stays dark — white street names that still read on bright roofs.
+  layer.brightness = LABEL_BRIGHTNESS;
   return layer;
 }
 

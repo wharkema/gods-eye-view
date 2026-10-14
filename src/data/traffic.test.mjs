@@ -9,6 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import trafficLayer, {
   deriveTrafficFlowError,
+  isQuietLocalRoad,
   trafficFeedPresentation,
 } from './traffic.js';
 import { DataLayerManager, layerFeedState } from './manager.js';
@@ -152,4 +153,14 @@ test('the shipped layer boots keyless-honest before any status check', () => {
   assert.equal(stats.error, null);
   assert.ok(!LIVE_CLAIM.test(stats.loadingLabel), `boot label implies live data: ${stats.loadingLabel}`);
   assert.equal(layerFeedState(stats), 'fallback');
+});
+
+test('live mode leaves quiet local streets empty but keeps through roads and jams', () => {
+  const free = { level: 1 };
+  const jam = { level: 0.1 };
+  assert.equal(isQuietLocalRoad('residential', free), true);
+  assert.equal(isQuietLocalRoad('unclassified', free), true);
+  assert.equal(isQuietLocalRoad('residential', jam), false, 'a jammed street shows up');
+  assert.equal(isQuietLocalRoad('primary', free), false, 'through roads always draw');
+  assert.equal(isQuietLocalRoad('residential', null), false, 'no flow data: unchanged');
 });
