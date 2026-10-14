@@ -13,11 +13,29 @@
  */
 
 /**
- * The path the app is served from, always ending in '/'. Derived from this
- * module's own URL: the built chunk lives in <base>/assets/, the dev source in
- * /src/, so one level up is the base either way.
+ * The path the app is served from, always ending in '/'.
+ * Dev always serves at '/'. A build derives it from the chunk's own URL: the
+ * chunk lives in <base>/assets/, so dropping the last two path segments leaves
+ * the base. (Not `new URL('../', import.meta.url)`: Vite's dev server rewrites
+ * that pattern into a /@fs/ file-system path.)
  */
-export const BASE = new URL('../', import.meta.url).pathname;
+export const BASE = import.meta.env?.DEV
+  ? '/'
+  : basePathFromModuleUrl(import.meta.url);
+
+/**
+ * '/gods-eye-view/assets/index-abc.js' → '/gods-eye-view/'; '/assets/x.js' → '/'.
+ * @param {string} moduleUrl
+ * @returns {string}
+ */
+export function basePathFromModuleUrl(moduleUrl) {
+  try {
+    const { pathname } = new URL(moduleUrl);
+    return pathname.replace(/[^/]*\/[^/]*$/, '') || '/';
+  } catch {
+    return '/';
+  }
+}
 
 /**
  * Prefix a same-origin URL with `base` when it points outside it.

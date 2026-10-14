@@ -2,6 +2,7 @@ import * as Cesium from 'cesium';
 import { deriveFetchCenter, clampBoundsAroundCenter } from './trafficBounds.js';
 import { fetchFlowForBounds, getFlowSessionStats, resetFlowTileCache } from './flowTiles.js';
 import { matchFlowToRoads } from './flowMatch.js';
+import { flowSegmentsToOverpass } from './flowRoads.js';
 import { flowBucket, flowSpeedScale, flowDensityMult } from './trafficFlowStyle.js';
 import {
   trafficStyleProfile,
@@ -2082,6 +2083,32 @@ async function loadRoadsForBounds(bounds, altitude, trace = null) {
         cache.full, clamped, generation, altitude, 'Cache full', trace
       );
       return;
+    }
+
+    // Live mode: TomTom's flow tiles carry the road geometry themselves, so
+    // build the roads from them instead of the public Overpass API (which now
+    // refuses or times out for some hosts — the layer then sat at 0% cov).
+    // Overpass stays the fallback when TomTom returns nothing usable.
+    await ensureFlowStatus();
+    if (generation !== _loadGeneration) return;
+    if (_liveMode) {
+      _activeFetchAbort = new AbortController();
+      try {
+        const segments = await fetchFlowForBounds(clamped, { signal: _activeFetchAbort.signal });
+        if (generation !== _loadGeneration) return;
+        const roads = _parseRoads(flowSegmentsToOverpass(segments, clamped), trace);
+        if (roads.length > 0) {
+          console.log(`[Data:Traffic] ${roads.length} roads from TomTom flow [${cacheKey}]`);
+          cache.full = roads;
+          renderedSomething = await applyFlowThenRender(
+            roads, clamped, generation, altitude, 'Loaded TomTom roads', trace
+          );
+          return;
+        }
+      } catch (e) {
+        if (e?.name === 'AbortError') return;
+        console.warn('[Data:Traffic] TomTom road geometry failed, trying Overpass:', e?.message || e);
+      }
     }
 
     // Intermediate path: render cached major roads while fetching the rest
