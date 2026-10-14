@@ -1925,6 +1925,14 @@ body.ui-clean-view #scene-runtime.active {
   font-size: 18px;
 }
 
+#top-center-actions .logout-form {
+  display: contents;
+}
+
+#top-center-actions button[hidden] {
+  display: none;
+}
+
 #global-loading-status {
   position: fixed;
   top: 74px;

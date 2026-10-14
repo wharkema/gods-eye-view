@@ -327,6 +327,10 @@ Everything above is the deliberately cheap baseline — enough to get a real tas
 
 By default nobody else can reach your server — it binds to localhost. To share on your LAN, opt in explicitly (`npm run dev -- --host 0.0.0.0 --port 4173`, or `HOST=0.0.0.0 ./scripts/dev-fresh.sh` on macOS/Linux) — but know that ⚠️ **a LAN-visible server brokers your configured API keys to anyone who can reach it.** Set the per-IP throttles (`GEV_RATELIMIT_OPENAI_PER_MIN`, `GEV_RATELIMIT_GOOGLE_PER_MIN` — see `.env.example`) and, before anything else, **set provider-side budget caps** (Google Cloud budgets, OpenAI usage limits): the throttles are app-level guards, not billing caps. Full threat model in [SECURITY.md](SECURITY.md).
 
+### 🔐 Login and a sub-path
+
+Set `APP_GEBRUIKERS` and `APP_GEHEIM` (make them with `node scripts/login.mjs hash` and `node scripts/login.mjs geheim`) and the whole instance — page, assets and every API proxy — sits behind a login screen. The production build uses a relative base, so it also runs behind a reverse proxy on a sub-path such as `https://example.com/gods-eye-view/`. The Docker setup for a Synology NAS (Container Manager, nginx, auto-update via Task Scheduler) is in [docs/deploy-nas.md](docs/deploy-nas.md).
+
 ---
 
 ## 📋 Responsible & Open

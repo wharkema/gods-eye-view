@@ -1,0 +1,16 @@
+# Never in the image: secrets, local builds and caches, development files
+.env
+.env.*
+!.env.example
+node_modules
+dist
+.git
+.github
+.claude
+.gev-cache
+.gev-logs
+screenshots
+qa-shots
+output
+docs
+*.log
