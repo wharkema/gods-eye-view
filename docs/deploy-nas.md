@@ -103,6 +103,7 @@ Vul in:
 | `AISSTREAM_API_KEY=` | dezelfde als op je pc |
 | `TOMTOM_API_KEY=` | dezelfde als op je pc (zonder `#` ervoor) |
 | `OPENROUTER_API_KEY=` | dezelfde als op je pc |
+| `CARTO_API_KEY=` | de CARTO-sleutel voor de straat- en plaatsnamen (laag Map Labels) |
 
 `HOST`, `PORT`, de cookie-instellingen en `PREVIEW_ALLOWED_HOSTS` zet `docker-compose.yml` al goed; die hoef je
 niet in te vullen.

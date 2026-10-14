@@ -16,9 +16,13 @@ import * as Cesium from 'cesium';
  * src/data/dataCredits.js and listed in DATA_SOURCES.md.
  */
 
-/** Label-only raster: white type with a dark halo, sized for aerial imagery. */
-const CARTO_LABELS_URL = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png';
-const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'];
+/**
+ * Label-only raster: white type with a dark halo, sized for aerial imagery.
+ * Fetched through the same-origin proxy (vite.config.js cartoLabelsProxy),
+ * which adds the CARTO_API_KEY that CARTO requires. Relative, so it also
+ * works when the app runs under a sub-path.
+ */
+const CARTO_LABELS_URL = 'api/carto/labels/{z}/{x}/{y}.png';
 /** CARTO serves these to z20; asking past it returns 404s, not sharper text. */
 const CARTO_MAX_ZOOM = 20;
 
@@ -35,7 +39,6 @@ let _status = 'idle';
 function buildImageryLayer() {
   const provider = new Cesium.UrlTemplateImageryProvider({
     url: CARTO_LABELS_URL,
-    subdomains: CARTO_SUBDOMAINS,
     maximumLevel: CARTO_MAX_ZOOM,
     credit: new Cesium.Credit('© OpenStreetMap contributors, © CARTO', false),
   });
