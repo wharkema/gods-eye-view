@@ -19,3 +19,7 @@ h.txt
 
 # Stray SPARQL scratch files from research runs.
 *.rq
+
+# Your own camera lists (CCTV_SOURCES_FILE=config/cctv_sources.local.json).
+# Never in git: this repo is public and they may hold private camera URLs.
+config/*.local.json
