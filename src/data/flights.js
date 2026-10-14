@@ -61,7 +61,8 @@ import {
 } from './motionModel.js';
 import { routePlausible } from './routePlausible.js';
 import { isMilitaryIcao, isMilitaryLayerActive, refreshMilitaryRegistryIfStale, onMilitaryLayerActiveChange } from './militaryRegistry.js';
-import { formatFlightLevel } from './detectionDraw.js';
+import { formatAltitudeMetres } from './detectionDraw.js';
+import { formatAltitudeM, formatSpeedMps } from '../units.js';
 import { createGroundSnap } from './groundSnap.js';
 import { trackedModelZoomActive } from './trackedModelRegime.js';
 import { geoidSurfaceLastResortM, pickRenderAltitudeM } from './renderAltitude.js';
@@ -412,7 +413,6 @@ function _publishTrackedSelection(icao24, origin = 'programmatic') {
 function _contextSubjectMetadata(icao24) {
   const described = _describeFlight(icao24);
   if (!described) return null;
-  const altFt = Math.round((described.altitudeM || 0) * 3.28084);
   const route = described.route && _routeIsPlausible(icao24, described.route)
     ? `${described.route.origin.code} → ${described.route.destination.code}`
     : null;
@@ -432,10 +432,8 @@ function _contextSubjectMetadata(icao24) {
       callsign: described.callsign || '',
       registration: described.registration || '',
       type: described.typeName || described.typeCode || '',
-      altitude: described.onGround ? 'on ground' : `${altFt.toLocaleString('en-US')} ft`,
-      speed: Number.isFinite(described.velocityMps)
-        ? `${Math.round(described.velocityMps * 1.944)} kt`
-        : '',
+      altitude: described.onGround ? 'on ground' : formatAltitudeM(described.altitudeM || 0),
+      speed: formatSpeedMps(described.velocityMps),
       heading: Number.isFinite(described.track) ? `${Math.round(described.track)}°` : '',
       route: route || '',
       icao24,
@@ -3282,9 +3280,8 @@ function _trackedLabelText(icao24) {
   // the ICAO hex, so a callsign-less enriched contact heads its readout with
   // the tail number rather than raw hex.
   const cs = _contactLabel(icao24, info);
-  const altFt = Math.round((info.altitude || 0) * 3.28084);
-  const fl = altFt >= 18000 ? `FL${Math.round(altFt / 100)}` : `${altFt} ft`;
-  const spd = info.velocity ? `${Math.round(info.velocity * 1.944)} kts` : '';
+  const fl = formatAltitudeM(info.altitude || 0);
+  const spd = info.velocity ? formatSpeedMps(info.velocity) : '';
   const stale = (_missingPolls.get(icao24) || _backoff) ? 'STALE' : '';
   const lines = [[cs, fl, spd, stale].filter(Boolean).join(' · ')];
   // Converted contacts report their class as TR-3B and nothing else — the
@@ -4863,7 +4860,7 @@ const flightsLayer = {
       const altitude = info?.altitude;
       if (object._altitude !== altitude) {
         object._altitude = altitude;
-        object.metric = formatFlightLevel(altitude); // altitude is metres
+        object.metric = formatAltitudeMetres(altitude); // altitude is metres
       }
       result.push(object);
       if (result.length >= maxCount) break;

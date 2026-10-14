@@ -1908,7 +1908,7 @@ function displayVesselName(record) {
 }
 
 function formatSpeed(speed) {
-  return speed === null ? '--KT' : `${speed.toFixed(1)}KT`;
+  return speed === null ? '--KT' : `${speed.toFixed(1)}KT · ${(speed * 1.852).toFixed(1)}KM/H`;
 }
 
 function formatHeading(heading) {

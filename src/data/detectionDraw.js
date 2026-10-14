@@ -13,31 +13,27 @@
 const MAX_PRIMARY = 18;
 /** @constant {number} Max characters shown for a label's secondary (class · metric) line. */
 const MAX_SECONDARY = 26;
-/** @constant {number} Metres-to-feet conversion factor. */
-const M_TO_FT = 3.28084;
-
 /**
- * Formats an altitude in metres as an aviation flight level (hundreds of feet),
- * zero-padded to three digits. Returns '' for missing/zero/negative altitude so
- * the label gracefully degrades to id-only.
+ * Formats an altitude in metres as a short label for the detection overlay.
+ * Returns '' for missing/zero/negative altitude so the label degrades to id-only.
  * @param {number} altitudeMeters - Altitude above sea level in metres.
- * @returns {string} e.g. 'FL340', or '' when not applicable.
+ * @returns {string} e.g. '10363 m', or '' when not applicable.
  */
-export function formatFlightLevel(altitudeMeters) {
+export function formatAltitudeMetres(altitudeMeters) {
   if (!Number.isFinite(altitudeMeters) || altitudeMeters <= 0) return '';
-  const fl = Math.round((altitudeMeters * M_TO_FT) / 100);
-  return 'FL' + String(fl).padStart(3, '0');
+  return Math.round(altitudeMeters) + ' m';
 }
 
 /**
- * Formats a speed in knots as a short rounded label. Returns '' for
- * non-positive or non-finite speeds (declutters moored/unknown vessels).
+ * Formats a speed in knots as a short rounded label, with km/h beside it.
+ * Returns '' for non-positive or non-finite speeds (declutters moored/unknown
+ * vessels).
  * @param {number} knots - Speed over ground in knots.
- * @returns {string} e.g. '14 kn', or '' when not applicable.
+ * @returns {string} e.g. '14 kn · 26 km/h', or '' when not applicable.
  */
 export function formatKnots(knots) {
   if (!Number.isFinite(knots) || knots <= 0) return '';
-  return Math.round(knots) + ' kn';
+  return `${Math.round(knots)} kn · ${Math.round(knots * 1.852)} km/h`;
 }
 
 /**

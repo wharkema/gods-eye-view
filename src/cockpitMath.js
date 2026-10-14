@@ -57,12 +57,12 @@ export function cockpitGroundSafeHeight(proposedHeightM, groundHeightM, clearanc
 }
 
 /**
- * Resolve the cockpit altitude readout without rewriting source aviation data.
- * Confirmed grounded contacts read zero feet; airborne contacts retain MSL.
+ * Resolve the cockpit altitude readout (metres MSL) without rewriting source
+ * aviation data. Confirmed grounded contacts read zero; airborne keep MSL.
  */
-export function cockpitAltitudeDisplayFt(altitudeM, onGround) {
+export function cockpitAltitudeDisplayM(altitudeM, onGround) {
   if (onGround === true) return 0;
-  return Number.isFinite(altitudeM) ? altitudeM * 3.28084 : null;
+  return Number.isFinite(altitudeM) ? altitudeM : null;
 }
 
 /** Format the cockpit Context scope without overstating installation coverage. */
@@ -98,36 +98,36 @@ export function formatCompassDivision(heading) {
   return labels.get(normalized) || String(Math.round(normalized)).padStart(3, '0');
 }
 
-/** Choose a readable altitude-tape interval for the current flight level. */
-export function altitudeRulerStep(altitudeFt) {
-  if (!Number.isFinite(altitudeFt)) return 500;
-  const altitude = Math.max(0, altitudeFt);
-  if (altitude < 5000) return 100;
-  if (altitude < 15000) return 250;
-  return 500;
+/** Choose a readable altitude-tape interval (metres) for the current altitude. */
+export function altitudeRulerStep(altitudeM) {
+  if (!Number.isFinite(altitudeM)) return 200;
+  const altitude = Math.max(0, altitudeM);
+  if (altitude < 1500) return 50;
+  if (altitude < 4500) return 100;
+  return 200;
 }
 
 /**
  * Return an odd number of altitude ticks whose fractional slots move smoothly
  * behind a fixed center pointer as altitude changes.
  */
-export function altitudeRulerTicks(altitudeFt, count = 9) {
-  if (!Number.isFinite(altitudeFt)) return [];
+export function altitudeRulerTicks(altitudeM, count = 9) {
+  if (!Number.isFinite(altitudeM)) return [];
   const tickCount = Math.max(3, Math.floor(count) | 1);
-  const altitude = Math.max(0, altitudeFt);
-  const stepFt = altitudeRulerStep(altitude);
-  const altitudeUnits = altitude / stepFt;
+  const altitude = Math.max(0, altitudeM);
+  const stepM = altitudeRulerStep(altitude);
+  const altitudeUnits = altitude / stepM;
   const anchorUnits = Math.floor(altitudeUnits);
   const half = Math.floor(tickCount / 2);
   return Array.from({ length: tickCount }, (_, index) => {
     const tickUnits = anchorUnits + index - half;
     const slot = tickUnits - altitudeUnits;
     return {
-      valueFt: Math.max(0, tickUnits * stepFt),
+      valueM: Math.max(0, tickUnits * stepM),
       slot,
       depth: Math.abs(slot),
       major: tickUnits % 2 === 0,
-      stepFt,
+      stepM,
     };
   });
 }
@@ -143,9 +143,9 @@ export function altitudeRulerCurveInset(slot) {
 }
 
 /** Render altitude-tape values as stable five-character flight-deck labels. */
-export function formatAltitudeRulerTick(valueFt) {
-  if (!Number.isFinite(valueFt)) return '-----';
-  return String(Math.max(0, Math.round(valueFt))).padStart(5, '0');
+export function formatAltitudeRulerTick(valueM) {
+  if (!Number.isFinite(valueM)) return '-----';
+  return String(Math.max(0, Math.round(valueM))).padStart(5, '0');
 }
 
 /** Choose a readable speed-tape interval for the current ground speed. */

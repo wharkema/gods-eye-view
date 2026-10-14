@@ -1278,7 +1278,7 @@ test('vessel trail lifecycle: reconciliation eviction clears an orphaned trail',
 test('buildVesselCard: name title + type/speed/heading detail line', () => {
   const card = buildVesselCard(makeRecord());
   assert.equal(card.title, 'EVER GIVEN');
-  assert.deepEqual(card.details, ['CONTAINER SHIP · 14.5KT · 231°']);
+  assert.deepEqual(card.details, ['CONTAINER SHIP · 14.5KT · 26.9KM/H · 231°']);
   assert.equal(card.accent, '57, 213, 255');
   assert.equal(card.selected, false);
   assert.equal(card.position, POS);
@@ -1314,7 +1314,7 @@ test('buildVesselCard: tanker types carry the amber accent', () => {
 
 test('buildVesselCard: numeric AIS type codes read as family names, not digits', () => {
   const card = buildVesselCard(makeRecord({ type: '84' }));
-  assert.deepEqual(card.details, ['TANKER · 14.5KT · 231°']);
+  assert.deepEqual(card.details, ['TANKER · 14.5KT · 26.9KM/H · 231°']);
   assert.equal(card.accent, '255, 179, 71');
 });
 
@@ -1335,7 +1335,7 @@ test('buildSelectedVesselCard: full detail card with MMSI + position time', () =
   assert.equal(card.priority, 100000);
   assert.equal(card.title, 'EVER GIVEN');
   assert.deepEqual(card.details, [
-    'CONTAINER SHIP · 14.5KT · 231°',
+    'CONTAINER SHIP · 14.5KT · 26.9KM/H · 231°',
     'MMSI 353136000 · POS: 11:22:33Z',
   ]);
 });

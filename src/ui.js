@@ -3,6 +3,7 @@ import { retroShader } from './styles/retro.js';
 import { animeShader } from './styles/anime.js';
 import { noirShader } from './styles/noir.js';
 import { snowShader } from './styles/snow.js';
+import { KT_TO_KMH } from './units.js';
 import { nightVisionShader } from './styles/surveillance.js';
 import { thermalShader } from './styles/thermal.js';
 import {
@@ -177,7 +178,7 @@ import {
   altitudeRulerTicks,
   bearingBetweenCoordinates,
   cockpitAnchorCorrectionStep,
-  cockpitAltitudeDisplayFt,
+  cockpitAltitudeDisplayM,
   cockpitGroundSafeHeight,
   cockpitSurfaceWaitExpired,
   cockpitUiUpdateDue,
@@ -687,6 +688,7 @@ class CockpitViewController {
     this.entryFocusOrigin = null;
     this.callsign = document.getElementById('cockpit-callsign');
     this.speed = document.getElementById('cockpit-speed-value');
+    this.speedUnit = document.getElementById('cockpit-speed-unit');
     this.speedRim = document.getElementById('cockpit-speed-rim');
     this.speedRimValue = document.getElementById('cockpit-speed-rim-value');
     this.speedRimTicks = Array.from(document.querySelectorAll('[data-speed-rim-tick]'));
@@ -1406,25 +1408,31 @@ class CockpitViewController {
       const label = element.querySelector('b');
       if (label) label.textContent = formatSpeedRulerTick(tick.valueKt);
     });
-    const altitudeFt = cockpitAltitudeDisplayFt(info.altitudeM, info.onGround);
+    // Ground speed reads in knots on the tape, with km/h beside the unit.
+    if (this.speedUnit) {
+      this.speedUnit.textContent = speedKt === null
+        ? 'KTS'
+        : `KTS · ${Math.round(speedKt * KT_TO_KMH)} KM/H`;
+    }
+    const altitudeM = cockpitAltitudeDisplayM(info.altitudeM, info.onGround);
     if (this.altitude) {
-      const displayedAltitudeFt = Number.isFinite(altitudeFt)
-        ? Math.round(altitudeFt)
+      const displayedAltitudeM = Number.isFinite(altitudeM)
+        ? Math.round(altitudeM)
         : null;
       setCockpitRollingValue(
         this.altitude,
-        displayedAltitudeFt !== null
-          ? displayedAltitudeFt.toLocaleString('en-US')
+        displayedAltitudeM !== null
+          ? displayedAltitudeM.toLocaleString('en-US')
           : '-----',
-        displayedAltitudeFt,
+        displayedAltitudeM,
         { immediate: forceContext },
       );
     }
-    if (this.altitudeRim) this.altitudeRim.classList.toggle('unavailable', altitudeFt === null);
+    if (this.altitudeRim) this.altitudeRim.classList.toggle('unavailable', altitudeM === null);
     if (this.altitudeRimValue) {
-      this.altitudeRimValue.textContent = formatAltitudeRulerTick(altitudeFt);
+      this.altitudeRimValue.textContent = formatAltitudeRulerTick(altitudeM);
     }
-    const altitudeTicks = altitudeRulerTicks(altitudeFt, this.altitudeRimTicks.length);
+    const altitudeTicks = altitudeRulerTicks(altitudeM, this.altitudeRimTicks.length);
     this.altitudeRimTicks.forEach((element, index) => {
       const tick = altitudeTicks[index];
       element.hidden = !tick;
@@ -1434,7 +1442,7 @@ class CockpitViewController {
       element.style.setProperty('--curve', altitudeRulerCurveInset(tick.slot).toFixed(5));
       element.classList.toggle('major', tick.major);
       const label = element.querySelector('b');
-      if (label) label.textContent = formatAltitudeRulerTick(tick.valueFt);
+      if (label) label.textContent = formatAltitudeRulerTick(tick.valueM);
     });
     setCockpitRollingValue(
       this.headingValue,
