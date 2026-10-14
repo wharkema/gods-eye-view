@@ -6,7 +6,7 @@ import {
   altitudeRulerCurveInset,
   bearingBetweenCoordinates,
   cockpitAnchorCorrectionStep,
-  cockpitAltitudeDisplayFt,
+  cockpitAltitudeDisplayM,
   cockpitGroundSafeHeight,
   cockpitSurfaceWaitExpired,
   cockpitUiUpdateDue,
@@ -60,9 +60,9 @@ test('cockpit camera clearance never falls below the rendered ground floor', () 
 });
 
 test('cockpit altitude reads zero on the ground without changing airborne MSL', () => {
-  assert.equal(cockpitAltitudeDisplayFt(200.56, true), 0);
-  assert.ok(Math.abs(cockpitAltitudeDisplayFt(3048, false) - 10000) < 0.01);
-  assert.equal(cockpitAltitudeDisplayFt(null, false), null);
+  assert.equal(cockpitAltitudeDisplayM(200.56, true), 0);
+  assert.equal(cockpitAltitudeDisplayM(3048, false), 3048);
+  assert.equal(cockpitAltitudeDisplayM(null, false), null);
 });
 
 test('cockpit Context scope distinguishes radius-complete feeds from viewport installations', () => {
@@ -88,24 +88,24 @@ test('cockpit Context scope preserves zero and replaces missing values intention
 });
 
 test('altitude ruler chooses tighter intervals close to the surface', () => {
-  assert.equal(altitudeRulerStep(1200), 100);
-  assert.equal(altitudeRulerStep(9000), 250);
-  assert.equal(altitudeRulerStep(34000), 500);
-  assert.equal(altitudeRulerStep(Number.NaN), 500);
+  assert.equal(altitudeRulerStep(1200), 50);
+  assert.equal(altitudeRulerStep(3000), 100);
+  assert.equal(altitudeRulerStep(10000), 200);
+  assert.equal(altitudeRulerStep(Number.NaN), 200);
 });
 
 test('altitude ruler ticks move fractionally behind the fixed pointer', () => {
-  const ticks = altitudeRulerTicks(34875);
+  const ticks = altitudeRulerTicks(10650); // metres, 200 m steps
   assert.equal(ticks.length, 9);
-  assert.equal(ticks[4].valueFt, 34500);
-  assert.equal(ticks[4].slot, -0.75);
-  assert.equal(ticks[5].valueFt, 35000);
-  assert.equal(ticks[5].slot, 0.25);
+  assert.equal(ticks[4].valueM, 10600);
+  assert.equal(ticks[4].slot, -0.25);
+  assert.equal(ticks[5].valueM, 10800);
+  assert.equal(ticks[5].slot, 0.75);
   assert.equal(ticks[5].major, true);
 });
 
 test('altitude ruler clamps below ground and formats fixed-width labels', () => {
-  assert.equal(altitudeRulerTicks(-20)[4].valueFt, 0);
+  assert.equal(altitudeRulerTicks(-20)[4].valueM, 0);
   assert.equal(formatAltitudeRulerTick(900), '00900');
   assert.equal(formatAltitudeRulerTick(34874.6), '34875');
   assert.equal(formatAltitudeRulerTick(null), '-----');

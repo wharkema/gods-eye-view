@@ -224,8 +224,8 @@ test('flights poll refreshes tracked callsign/FL/kts and marks a missed poll STA
   try {
     await flightsLayer.update(viewer);
     assert.equal(entity.gevLabelModel.title, 'DAL123');
-    assert.match(entity.gevLabelModel.details.join(' · '), /FL350/);
-    assert.match(entity.gevLabelModel.details.join(' · '), /486 kts/);
+    assert.match(entity.gevLabelModel.details.join(' · '), /10\u2009668 m/);
+    assert.match(entity.gevLabelModel.details.join(' · '), /486 kts · 900 km\/h/);
 
     await flightsLayer.update(viewer);
     assert.match(
@@ -346,7 +346,7 @@ test('real civil track path creates no native label and publishes every cached h
     assert.equal(entity.label, undefined);
     assert.ok(entities.values.every((candidate) => candidate.label === undefined));
     assert.deepEqual(entity.gevLabelModel, {
-      title: 'N12345 · FL350 · 486 kts',
+      title: 'N12345 · 10\u2009668 m · 486 kts · 900 km/h',
       details: ['TEST AIR · A320', 'AUS → LAX'],
       accent: '#39d0ff',
     });

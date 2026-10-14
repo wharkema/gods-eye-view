@@ -34,7 +34,8 @@ import {
   liftRepeatedGroundFix, synthesizeForwardKinematicsFix, COURSE_HOLD_SPEED_MPS,
 } from './motionModel.js';
 import { setMilitaryLayerActive, registerMilitaryIcaos } from './militaryRegistry.js';
-import { formatFlightLevel } from './detectionDraw.js';
+import { formatAltitudeMetres } from './detectionDraw.js';
+import { FT_TO_M, formatAltitudeM, formatSpeedMps } from '../units.js';
 import { createGroundSnap } from './groundSnap.js';
 import { trackedModelZoomActive } from './trackedModelRegime.js';
 import { pickRenderAltitudeM } from './renderAltitude.js';
@@ -361,9 +362,7 @@ function _contextSubjectMetadata(icao24) {
       // the readout and Contacts card show.
       type: tr3bTypeLabel(icao24, _toCleanText(info?.type) || ''),
       altitude: described.onGround ? 'on ground' : _formatAltitude(info?.altitudeFt),
-      speed: Number.isFinite(described.velocityMps)
-        ? `${Math.round(described.velocityMps * 1.944)} kt`
-        : '',
+      speed: formatSpeedMps(described.velocityMps),
       heading: Number.isFinite(described.track) ? `${Math.round(described.track)}°` : '',
       icao24,
       // Honesty cue: the contact is coasting on dead reckoning, so the
@@ -661,13 +660,14 @@ function _toCleanText(value) {
 }
 
 /**
- * Format an altitude value in feet for display, with fallback text.
+ * Format a barometric altitude (feet, as readsb reports it) in metres for
+ * display, with fallback text.
  * @param {number|null|undefined} altitudeFt - Barometric altitude in feet
- * @returns {string} Formatted altitude string (e.g. "35000 ft" or "Alt unknown")
+ * @returns {string} Formatted altitude string (e.g. "10 668 m" or "Alt unknown")
  */
 function _formatAltitude(altitudeFt) {
   if (!Number.isFinite(altitudeFt)) return 'Alt unknown';
-  return `${Math.round(altitudeFt)} ft`;
+  return formatAltitudeM(altitudeFt * FT_TO_M);
 }
 
 /**
@@ -710,8 +710,8 @@ function _buildTrackedLabel(info, icao24) {
   const registration = _toCleanText(info?.registration) || 'Reg unknown';
   const operator = _toCleanText(info?.operator) || 'Operator unknown';
   const altitude = _formatAltitude(info?.altitudeFt);
-  const speedKt = info?.speedMps ? Math.round(info.speedMps * 1.944) : null;
-  const tail = speedKt ? `${altitude} · ${speedKt} kt` : altitude;
+  const speed = info?.speedMps ? formatSpeedMps(info.speedMps) : '';
+  const tail = speed ? `${altitude} · ${speed}` : altitude;
   return [
     callsign,
     `${type} · ${registration}`,
@@ -3518,7 +3518,7 @@ const militaryFlightsLayer = {
       if (object._altitudeFt !== altitudeFt) {
         object._altitudeFt = altitudeFt;
         // military metadata stores altitudeFt (feet); the helper takes metres
-        object.metric = formatFlightLevel(altitudeFt * 0.3048);
+        object.metric = formatAltitudeMetres(altitudeFt * FT_TO_M);
       }
       result.push(object);
       if (result.length >= maxCount) break;

@@ -2734,6 +2734,12 @@ body.cockpit-mode:has(#left-panel-stack > .panel-collapsible:not(.collapsed)) .c
   font-weight: 600;
   letter-spacing: 0.2em;
 }
+
+/* "KTS · 900 KM/H" is twice as long as a bare unit; tighter so it fits the readout. */
+.cockpit-readout-unit-dual {
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
 .cockpit-reticle {
   position: absolute;
   top: 46%;

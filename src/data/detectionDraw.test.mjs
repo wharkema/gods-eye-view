@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatFlightLevel,
+  formatAltitudeMetres,
   formatKnots,
   monoTextWidth,
   composeLabel,
@@ -17,22 +17,22 @@ import {
   rectIntersectsAny,
 } from './detectionDraw.js';
 
-test('formatFlightLevel converts metres to a 3-digit flight level', () => {
-  assert.equal(formatFlightLevel(10363), 'FL340'); // 34,000 ft
-  assert.equal(formatFlightLevel(1524), 'FL050');  // 5,000 ft, zero-padded
+test('formatAltitudeMetres reads whole metres', () => {
+  assert.equal(formatAltitudeMetres(10363.4), '10363 m');
+  assert.equal(formatAltitudeMetres(1524), '1524 m');
 });
 
-test('formatFlightLevel returns empty string for missing/zero/negative altitude', () => {
-  assert.equal(formatFlightLevel(0), '');
-  assert.equal(formatFlightLevel(-50), '');
-  assert.equal(formatFlightLevel(null), '');
-  assert.equal(formatFlightLevel(undefined), '');
-  assert.equal(formatFlightLevel(NaN), '');
+test('formatAltitudeMetres returns empty string for missing/zero/negative altitude', () => {
+  assert.equal(formatAltitudeMetres(0), '');
+  assert.equal(formatAltitudeMetres(-50), '');
+  assert.equal(formatAltitudeMetres(null), '');
+  assert.equal(formatAltitudeMetres(undefined), '');
+  assert.equal(formatAltitudeMetres(NaN), '');
 });
 
 test('formatKnots rounds and suffixes; omits non-positive/non-finite', () => {
-  assert.equal(formatKnots(14), '14 kn');
-  assert.equal(formatKnots(14.6), '15 kn');
+  assert.equal(formatKnots(14), '14 kn · 26 km/h');
+  assert.equal(formatKnots(14.6), '15 kn · 27 km/h');
   assert.equal(formatKnots(0), '');
   assert.equal(formatKnots(null), '');
   assert.equal(formatKnots(NaN), '');
