@@ -28,7 +28,7 @@ Al geregeld voor TTD2026 en niet opnieuw nodig: Git, Container Manager, SSH op p
 voor `wharkema.nl` en de nginx-map van Web Station.
 
 **Deze fork volgt [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view).** Alle eigen
-aanpassingen (login, subpad, NAS-container, Map Labels, km/h en meters) staan achter één schakelaar,
+aanpassingen (login, subpad, NAS-container, Map Labels, km/h en meters, CCTV-lijst op land en stad) staan achter één schakelaar,
 `GEV_SELF_HOSTING=1`, die alleen de NAS-container aanzet (`deploy/Dockerfile.nas`, `deploy/compose.nas.yaml`).
 De eigen code staat in `server/wharkema/`, `src/selfHosting/` en `src/layers/mapLabels/`. Zonder de schakelaar
 gedraagt de app zich precies als het hoofdproject, zodat updates van daar makkelijk over te nemen zijn.
