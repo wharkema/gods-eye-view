@@ -18,7 +18,10 @@ import {
   relatief,
 } from './auth.js';
 
-const STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'static');
+const STATIC_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'static',
+);
 const STATIC_FILES = {
   'login.css': 'text/css; charset=utf-8',
   'login.js': 'text/javascript; charset=utf-8',
@@ -29,7 +32,8 @@ const MAX_BODY = 8 * 1024;
 function leesCookie(req, naam) {
   for (const deel of String(req.headers.cookie || '').split(';')) {
     const i = deel.indexOf('=');
-    if (i > 0 && deel.slice(0, i).trim() === naam) return deel.slice(i + 1).trim();
+    if (i > 0 && deel.slice(0, i).trim() === naam)
+      return deel.slice(i + 1).trim();
   }
   return null;
 }
@@ -47,7 +51,9 @@ function leesFormulier(req) {
       }
       delen.push(chunk);
     });
-    req.on('end', () => resolve(new URLSearchParams(Buffer.concat(delen).toString('utf8'))));
+    req.on('end', () =>
+      resolve(new URLSearchParams(Buffer.concat(delen).toString('utf8'))),
+    );
     req.on('error', reject);
   });
 }
@@ -58,12 +64,23 @@ function stuur(res, status, body, headers = {}) {
   res.end(body);
 }
 
-const json = (res, status, obj) => stuur(res, status, JSON.stringify(obj), { 'Content-Type': 'application/json' });
-const doorsturen = (res, naar, headers = {}) => stuur(res, 303, '', { Location: naar, ...headers });
+const json = (res, status, obj) =>
+  stuur(res, status, JSON.stringify(obj), {
+    'Content-Type': 'application/json',
+  });
+const doorsturen = (res, naar, headers = {}) =>
+  stuur(res, 303, '', { Location: naar, ...headers });
 
 const FORWARDING_HEADERS = [
-  'forwarded', 'via', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port',
-  'x-forwarded-proto', 'x-real-ip', 'cf-connecting-ip', 'cf-ray',
+  'forwarded',
+  'via',
+  'x-forwarded-for',
+  'x-forwarded-host',
+  'x-forwarded-port',
+  'x-forwarded-proto',
+  'x-real-ip',
+  'cf-connecting-ip',
+  'cf-ray',
 ];
 
 /**
@@ -84,11 +101,19 @@ const FORWARDING_HEADERS = [
  */
 export function trustProxiedRequest(req) {
   const headers = req.headers || {};
-  const proto = String(headers['x-forwarded-proto'] || '').trim().toLowerCase();
-  const host = String(headers.host || '').trim().toLowerCase();
+  const proto = String(headers['x-forwarded-proto'] || '')
+    .trim()
+    .toLowerCase();
+  const host = String(headers.host || '')
+    .trim()
+    .toLowerCase();
   const origin = headers.origin;
-  if (origin && (proto === 'https' || proto === 'http') && host
-    && origin.toLowerCase() === `${proto}://${host}`) {
+  if (
+    origin &&
+    (proto === 'https' || proto === 'http') &&
+    host &&
+    origin.toLowerCase() === `${proto}://${host}`
+  ) {
     headers.origin = `http://${host}`;
   }
   for (const name of FORWARDING_HEADERS) delete headers[name];
@@ -102,14 +127,15 @@ export function maakLoginMiddleware(config) {
   const pogingen = new Pogingen();
   const pagina = fs.readFileSync(path.join(STATIC_DIR, 'login.html'));
 
-  const cookie = (waarde, maxAge) => [
-    `${COOKIE}=${waarde}`,
-    `Path=${config.cookiePad}`,
-    `Max-Age=${maxAge}`,
-    'HttpOnly',
-    'SameSite=Lax',
-    ...(config.cookieSecure ? ['Secure'] : []),
-  ].join('; ');
+  const cookie = (waarde, maxAge) =>
+    [
+      `${COOKIE}=${waarde}`,
+      `Path=${config.cookiePad}`,
+      `Max-Age=${maxAge}`,
+      'HttpOnly',
+      'SameSite=Lax',
+      ...(config.cookieSecure ? ['Secure'] : []),
+    ].join('; ');
 
   return async function loginMiddleware(req, res, next) {
     const rawUrl = req.url || '/';
@@ -145,10 +171,14 @@ export function maakLoginMiddleware(config) {
       const naam = pad.slice('/login-bestanden/'.length);
       const type = STATIC_FILES[naam];
       if (!type) {
-        stuur(res, 404, 'Not found\n', { 'Content-Type': 'text/plain; charset=utf-8' });
+        stuur(res, 404, 'Not found\n', {
+          'Content-Type': 'text/plain; charset=utf-8',
+        });
         return;
       }
-      stuur(res, 200, fs.readFileSync(path.join(STATIC_DIR, naam)), { 'Content-Type': type });
+      stuur(res, 200, fs.readFileSync(path.join(STATIC_DIR, naam)), {
+        'Content-Type': type,
+      });
       return;
     }
 
@@ -158,11 +188,18 @@ export function maakLoginMiddleware(config) {
         try {
           formulier = await leesFormulier(req);
         } catch {
-          stuur(res, 413, 'Too large\n', { 'Content-Type': 'text/plain; charset=utf-8' });
+          stuur(res, 413, 'Too large\n', {
+            'Content-Type': 'text/plain; charset=utf-8',
+          });
           return;
         }
-        const naam = String(formulier.get('gebruiker') || '').trim().slice(0, 100);
-        const wachtwoord = String(formulier.get('wachtwoord') || '').slice(0, 200);
+        const naam = String(formulier.get('gebruiker') || '')
+          .trim()
+          .slice(0, 100);
+        const wachtwoord = String(formulier.get('wachtwoord') || '').slice(
+          0,
+          200,
+        );
         if (pogingen.geblokkeerd(naam)) {
           doorsturen(res, 'login?fout=geblokkeerd');
           return;
@@ -173,7 +210,9 @@ export function maakLoginMiddleware(config) {
           return;
         }
         pogingen.gelukt(naam);
-        doorsturen(res, './', { 'Set-Cookie': cookie(config.maakSessie(naam), SESSIEDUUR) });
+        doorsturen(res, './', {
+          'Set-Cookie': cookie(config.maakSessie(naam), SESSIEDUUR),
+        });
         return;
       }
       if (gebruiker) {
@@ -214,7 +253,9 @@ export function loginGate() {
   const install = (server) => {
     const config = loadLoginConfig(process.env);
     if (config.actief) {
-      server.config.logger.info(`  Login aan: ${config.gebruikers.size} account(s), cookiepad ${config.cookiePad}`);
+      server.config.logger.info(
+        `  Login aan: ${config.gebruikers.size} account(s), cookiepad ${config.cookiePad}`,
+      );
     }
     server.middlewares.use(maakLoginMiddleware(config));
   };

@@ -20,7 +20,10 @@ export function cartoLabelsProxy() {
       server.middlewares.use('/api/carto', async (req, res) => {
         const sendJson = (status, obj) => {
           if (res.headersSent) return;
-          res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.writeHead(status, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          });
           res.end(JSON.stringify(obj));
         };
         const urlPath = String(req.url || '').split('?')[0];
@@ -28,7 +31,9 @@ export function cartoLabelsProxy() {
           sendJson(200, { hasKey: Boolean(process.env.CARTO_API_KEY) });
           return;
         }
-        const m = urlPath.match(/^\/labels\/(\d{1,2})\/(\d{1,7})\/(\d{1,7})\.png$/);
+        const m = urlPath.match(
+          /^\/labels\/(\d{1,2})\/(\d{1,7})\/(\d{1,7})\.png$/,
+        );
         const z = m ? Number(m[1]) : NaN;
         const x = m ? Number(m[2]) : NaN;
         const y = m ? Number(m[3]) : NaN;
@@ -40,9 +45,13 @@ export function cartoLabelsProxy() {
         // Sanitized responses only: never echo the key or the upstream URL.
         const url = `${UPSTREAM}/${z}/${x}/${y}@2x.png${key ? `?key=${encodeURIComponent(key)}` : ''}`;
         try {
-          const upstream = await fetch(url, { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
+          const upstream = await fetch(url, {
+            signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+          });
           if (!upstream.ok) {
-            sendJson(upstream.status === 404 ? 404 : 502, { error: 'upstream' });
+            sendJson(upstream.status === 404 ? 404 : 502, {
+              error: 'upstream',
+            });
             return;
           }
           const buf = Buffer.from(await upstream.arrayBuffer());

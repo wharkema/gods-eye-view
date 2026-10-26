@@ -32,8 +32,18 @@ const b64 = (buf) => Buffer.from(buf).toString('base64url');
 const unb64 = (text) => Buffer.from(text, 'base64url');
 
 /** Format without '$' or ':', so it fits safely in .env and docker compose. */
-export function hashWachtwoord(wachtwoord, salt = crypto.randomBytes(16), iteraties = ITERATIES) {
-  const digest = crypto.pbkdf2Sync(String(wachtwoord), salt, iteraties, 32, 'sha256');
+export function hashWachtwoord(
+  wachtwoord,
+  salt = crypto.randomBytes(16),
+  iteraties = ITERATIES,
+) {
+  const digest = crypto.pbkdf2Sync(
+    String(wachtwoord),
+    salt,
+    iteraties,
+    32,
+    'sha256',
+  );
   return `${ALGORITME}.${iteraties}.${b64(salt)}.${b64(digest)}`;
 }
 
@@ -42,16 +52,24 @@ export function controleerWachtwoord(wachtwoord, opgeslagen) {
   if (delen.length !== 4) return false;
   const [algoritme, iteraties, salt, digest] = delen;
   const n = Number.parseInt(iteraties, 10);
-  if (algoritme !== ALGORITME || !Number.isFinite(n) || n < MIN_ITERATIES) return false;
+  if (algoritme !== ALGORITME || !Number.isFinite(n) || n < MIN_ITERATIES)
+    return false;
   const verwacht = unb64(digest);
   if (verwacht.length === 0) return false;
-  const berekend = crypto.pbkdf2Sync(String(wachtwoord), unb64(salt), n, verwacht.length, 'sha256');
+  const berekend = crypto.pbkdf2Sync(
+    String(wachtwoord),
+    unb64(salt),
+    n,
+    verwacht.length,
+    'sha256',
+  );
   return crypto.timingSafeEqual(berekend, verwacht);
 }
 
 // Still hash for an unknown username, so the response time gives nothing away.
 let dummyHash = null;
-const dummy = () => (dummyHash ??= hashWachtwoord(crypto.randomBytes(16).toString('hex')));
+const dummy = () =>
+  (dummyHash ??= hashWachtwoord(crypto.randomBytes(16).toString('hex')));
 
 /** APP_GEBRUIKERS=naam=hash,naam2=hash2 */
 export function parseGebruikers(waarde) {
@@ -64,8 +82,8 @@ export function parseGebruikers(waarde) {
     const opgeslagen = i > 0 ? deel.slice(i + 1).trim() : '';
     if (!naam || !opgeslagen.startsWith(`${ALGORITME}.`)) {
       throw new LoginConfigFout(
-        `Ongeldig account in APP_GEBRUIKERS: ${JSON.stringify(naam || deel.slice(0, 10))}. `
-        + 'Maak de regel met: node scripts/login.mjs hash',
+        `Ongeldig account in APP_GEBRUIKERS: ${JSON.stringify(naam || deel.slice(0, 10))}. ` +
+          'Maak de regel met: node scripts/login.mjs hash',
       );
     }
     gebruikers.set(naam, opgeslagen);
@@ -74,12 +92,21 @@ export function parseGebruikers(waarde) {
 }
 
 function ja(waarde, standaard) {
-  if (waarde === undefined || waarde === null || !String(waarde).trim()) return standaard;
-  return ['1', 'true', 'ja', 'yes', 'aan', 'on'].includes(String(waarde).trim().toLowerCase());
+  if (waarde === undefined || waarde === null || !String(waarde).trim())
+    return standaard;
+  return ['1', 'true', 'ja', 'yes', 'aan', 'on'].includes(
+    String(waarde).trim().toLowerCase(),
+  );
 }
 
 export class LoginConfig {
-  constructor({ gebruikers = new Map(), geheim = '', cookieSecure = true, cookiePad = '/', trustProxy = false } = {}) {
+  constructor({
+    gebruikers = new Map(),
+    geheim = '',
+    cookieSecure = true,
+    cookiePad = '/',
+    trustProxy = false,
+  } = {}) {
     this.gebruikers = gebruikers;
     this.geheim = Buffer.from(geheim, 'utf8');
     this.cookieSecure = cookieSecure;
@@ -99,11 +126,15 @@ export class LoginConfig {
       Buffer.from('sessie', 'ascii'),
       Buffer.from(this.gebruikers.get(naam) || '', 'utf8'),
     ]);
-    return b64(crypto.createHmac('sha256', sleutel).update(payload, 'ascii').digest());
+    return b64(
+      crypto.createHmac('sha256', sleutel).update(payload, 'ascii').digest(),
+    );
   }
 
   maakSessie(naam, nu = Date.now() / 1000) {
-    const payload = b64(JSON.stringify({ g: naam, v: Math.floor(nu) + SESSIEDUUR }));
+    const payload = b64(
+      JSON.stringify({ g: naam, v: Math.floor(nu) + SESSIEDUUR }),
+    );
     return `${payload}.${this.handtekening(payload, naam)}`;
   }
 
@@ -125,7 +156,11 @@ export class LoginConfig {
     if (!this.gebruikers.has(naam) || !Number.isFinite(verloopt)) return null;
     const verwacht = Buffer.from(this.handtekening(payload, naam));
     const gekregen = Buffer.from(handtekening);
-    if (verwacht.length !== gekregen.length || !crypto.timingSafeEqual(verwacht, gekregen)) return null;
+    if (
+      verwacht.length !== gekregen.length ||
+      !crypto.timingSafeEqual(verwacht, gekregen)
+    )
+      return null;
     return nu < verloopt ? naam : null;
   }
 
@@ -144,8 +179,8 @@ export function loadLoginConfig(env = process.env) {
   if (gebruikers.size === 0) {
     if (ja(env.APP_LOGIN_VERPLICHT, false)) {
       throw new LoginConfigFout(
-        'APP_LOGIN_VERPLICHT staat aan, maar APP_GEBRUIKERS is leeg. '
-        + 'Maak een account met: node scripts/login.mjs hash',
+        'APP_LOGIN_VERPLICHT staat aan, maar APP_GEBRUIKERS is leeg. ' +
+          'Maak een account met: node scripts/login.mjs hash',
       );
     }
     return new LoginConfig();
@@ -174,7 +209,9 @@ export class Pogingen {
 
   recent(naam, nu) {
     const sleutel = String(naam).toLowerCase();
-    const lijst = (this.mislukt.get(sleutel) || []).filter((t) => nu - t < BLOKKADE);
+    const lijst = (this.mislukt.get(sleutel) || []).filter(
+      (t) => nu - t < BLOKKADE,
+    );
     this.mislukt.set(sleutel, lijst);
     return lijst;
   }

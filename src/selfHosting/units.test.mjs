@@ -15,7 +15,8 @@ test('speeds read in knots and km/h side by side', () => {
   assert.equal(formatSpeedKnots(486), `486${NB}kts · 900${NB}km/h`);
   assert.equal(formatSpeedKnots(14.5), `15${NB}kts · 27${NB}km/h`);
   assert.equal(formatSpeedMps(250), `486${NB}kts · 900${NB}km/h`);
-  for (const bad of [null, undefined, NaN, -1]) assert.equal(formatSpeedKnots(bad), '');
+  for (const bad of [null, undefined, NaN, -1])
+    assert.equal(formatSpeedKnots(bad), '');
 });
 
 test('altitude reads in whole metres', () => {

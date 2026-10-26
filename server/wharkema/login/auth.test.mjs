@@ -16,11 +16,15 @@ import {
 
 // Made by superp_login (wharkema/TTD2026, Python) for 'correct horse battery':
 // a line from that tool must work here unchanged.
-const PYTHON_HASH = 'pbkdf2-sha256.100000.AAECAwQFBgcICQoLDA0ODw.yNEi7NuUd81IprF1DFmFwLiwUVjQQNIFF8zbSYZd5DY';
+const PYTHON_HASH =
+  'pbkdf2-sha256.100000.AAECAwQFBgcICQoLDA0ODw.yNEi7NuUd81IprF1DFmFwLiwUVjQQNIFF8zbSYZd5DY';
 const GEHEIM = 'x'.repeat(40);
 
 test('a hash made by the Python superp_login tool verifies', () => {
-  assert.equal(controleerWachtwoord('correct horse battery', PYTHON_HASH), true);
+  assert.equal(
+    controleerWachtwoord('correct horse battery', PYTHON_HASH),
+    true,
+  );
   assert.equal(controleerWachtwoord('wrong', PYTHON_HASH), false);
 });
 
@@ -29,7 +33,11 @@ test('hashWachtwoord round-trips and rejects weak or malformed hashes', () => {
   assert.match(hash, /^pbkdf2-sha256\.100000\.[\w-]+\.[\w-]+$/);
   assert.equal(controleerWachtwoord('een lang wachtwoord', hash), true);
   assert.equal(controleerWachtwoord('ander', hash), false);
-  assert.equal(controleerWachtwoord('x', 'pbkdf2-sha256.1000.AAAA.AAAA'), false, 'too few iterations');
+  assert.equal(
+    controleerWachtwoord('x', 'pbkdf2-sha256.1000.AAAA.AAAA'),
+    false,
+    'too few iterations',
+  );
   assert.equal(controleerWachtwoord('x', 'onzin'), false);
   assert.equal(controleerWachtwoord('x', ''), false);
 });
@@ -44,9 +52,16 @@ test('parseGebruikers reads name=hash pairs and refuses anything else', () => {
 
 test('loadLoginConfig: off without accounts, refuses to start when required', () => {
   assert.equal(loadLoginConfig({}).actief, false);
-  assert.throws(() => loadLoginConfig({ APP_LOGIN_VERPLICHT: '1' }), LoginConfigFout);
   assert.throws(
-    () => loadLoginConfig({ APP_GEBRUIKERS: `w=${PYTHON_HASH}`, APP_GEHEIM: 'kort' }),
+    () => loadLoginConfig({ APP_LOGIN_VERPLICHT: '1' }),
+    LoginConfigFout,
+  );
+  assert.throws(
+    () =>
+      loadLoginConfig({
+        APP_GEBRUIKERS: `w=${PYTHON_HASH}`,
+        APP_GEHEIM: 'kort',
+      }),
     LoginConfigFout,
   );
   const config = loadLoginConfig({
@@ -61,7 +76,10 @@ test('loadLoginConfig: off without accounts, refuses to start when required', ()
 });
 
 function config() {
-  return new LoginConfig({ gebruikers: parseGebruikers(`w=${PYTHON_HASH}`), geheim: GEHEIM });
+  return new LoginConfig({
+    gebruikers: parseGebruikers(`w=${PYTHON_HASH}`),
+    geheim: GEHEIM,
+  });
 }
 
 test('sessions verify, expire, and resist tampering', () => {
@@ -71,11 +89,20 @@ test('sessions verify, expire, and resist tampering', () => {
   assert.equal(c.leesSessie(sessie, nu + 10), 'w');
   assert.equal(c.leesSessie(sessie, nu + SESSIEDUUR + 1), null, 'expired');
   const [payload, sig] = sessie.split('.');
-  assert.equal(c.leesSessie(`${payload}.${sig.slice(0, -2)}xx`, nu), null, 'bad signature');
-  const vals = Buffer.from(JSON.stringify({ g: 'w', v: nu + 99_999 })).toString('base64url');
+  assert.equal(
+    c.leesSessie(`${payload}.${sig.slice(0, -2)}xx`, nu),
+    null,
+    'bad signature',
+  );
+  const vals = Buffer.from(JSON.stringify({ g: 'w', v: nu + 99_999 })).toString(
+    'base64url',
+  );
   assert.equal(c.leesSessie(`${vals}.${sig}`, nu), null, 'payload swapped');
   assert.equal(c.leesSessie('onzin', nu), null);
-  const ander = new LoginConfig({ gebruikers: parseGebruikers(`w=${PYTHON_HASH}`), geheim: 'y'.repeat(40) });
+  const ander = new LoginConfig({
+    gebruikers: parseGebruikers(`w=${PYTHON_HASH}`),
+    geheim: 'y'.repeat(40),
+  });
   assert.equal(ander.leesSessie(sessie, nu), null, 'other secret');
 });
 

@@ -94,18 +94,24 @@ export function createMapLabelsLayer({
     updateInterval: 0,
     init(nextViewer) {
       viewer = nextViewer;
-      eventTarget?.addEventListener?.('gev:map-stack-changed', onMapStackChanged);
+      eventTarget?.addEventListener?.(
+        'gev:map-stack-changed',
+        onMapStackChanged,
+      );
     },
     attachShellServices(services) {
       imageryHost =
-        typeof services?.imageryHost === 'function' ? services.imageryHost : null;
+        typeof services?.imageryHost === 'function'
+          ? services.imageryHost
+          : null;
       attach();
     },
     enable() {
       enabled = true;
       attach();
       // The host can change without an event (the tileset arrives late).
-      removeCamera ??= viewer?.camera?.moveEnd?.addEventListener?.(attach) || null;
+      removeCamera ??=
+        viewer?.camera?.moveEnd?.addEventListener?.(attach) || null;
     },
     disable() {
       enabled = false;
@@ -128,8 +134,12 @@ export function createMapLabelsLayer({
     },
     destroy() {
       this.disable();
-      eventTarget?.removeEventListener?.('gev:map-stack-changed', onMapStackChanged);
-      if (imageryLayer && !imageryLayer.isDestroyed?.()) imageryLayer.destroy?.();
+      eventTarget?.removeEventListener?.(
+        'gev:map-stack-changed',
+        onMapStackChanged,
+      );
+      if (imageryLayer && !imageryLayer.isDestroyed?.())
+        imageryLayer.destroy?.();
       imageryLayer = null;
       viewer = null;
     },

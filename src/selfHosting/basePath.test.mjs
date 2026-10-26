@@ -7,8 +7,14 @@ const PAGE = 'https://wharkema.nl/gods-eye-view/';
 const BASE = '/gods-eye-view/';
 
 test('root-absolute paths move under the sub-path', () => {
-  assert.equal(withBase('/api/tomtom/status', BASE, PAGE), '/gods-eye-view/api/tomtom/status');
-  assert.equal(withBase('/models/a320.glb?v=2#x', BASE, PAGE), '/gods-eye-view/models/a320.glb?v=2#x');
+  assert.equal(
+    withBase('/api/tomtom/status', BASE, PAGE),
+    '/gods-eye-view/api/tomtom/status',
+  );
+  assert.equal(
+    withBase('/models/a320.glb?v=2#x', BASE, PAGE),
+    '/gods-eye-view/models/a320.glb?v=2#x',
+  );
 });
 
 test('same-origin absolute URLs move too, keeping their type', () => {
@@ -40,7 +46,15 @@ test('at the site root nothing changes', () => {
 });
 
 test('the base comes from the built chunk URL', () => {
-  assert.equal(basePathFromModuleUrl('https://wharkema.nl/gods-eye-view/assets/index-abc.js'), '/gods-eye-view/');
-  assert.equal(basePathFromModuleUrl('http://localhost:4173/assets/index-abc.js'), '/');
+  assert.equal(
+    basePathFromModuleUrl(
+      'https://wharkema.nl/gods-eye-view/assets/index-abc.js',
+    ),
+    '/gods-eye-view/',
+  );
+  assert.equal(
+    basePathFromModuleUrl('http://localhost:4173/assets/index-abc.js'),
+    '/',
+  );
   assert.equal(basePathFromModuleUrl('not a url'), '/');
 });

@@ -5,7 +5,8 @@ import http from 'node:http';
 import { LoginConfig, parseGebruikers } from './auth.js';
 import { maakLoginMiddleware } from './plugin.js';
 
-const HASH = 'pbkdf2-sha256.100000.AAECAwQFBgcICQoLDA0ODw.yNEi7NuUd81IprF1DFmFwLiwUVjQQNIFF8zbSYZd5DY';
+const HASH =
+  'pbkdf2-sha256.100000.AAECAwQFBgcICQoLDA0ODw.yNEi7NuUd81IprF1DFmFwLiwUVjQQNIFF8zbSYZd5DY';
 const WACHTWOORD = 'correct horse battery';
 
 /** Run the middleware in a real HTTP server; `next` answers 200 'app'. */
@@ -20,30 +21,37 @@ async function metServer(config, fn) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const basis = `http://127.0.0.1:${server.address().port}`;
   try {
-    await fn((pad, init = {}) => fetch(basis + pad, { redirect: 'manual', ...init }));
+    await fn((pad, init = {}) =>
+      fetch(basis + pad, { redirect: 'manual', ...init }),
+    );
   } finally {
     server.close();
   }
 }
 
-const aan = () => new LoginConfig({
-  gebruikers: parseGebruikers(`wesley=${HASH}`),
-  geheim: 'x'.repeat(40),
-  cookieSecure: true,
-  cookiePad: '/gods-eye-view',
-});
+const aan = () =>
+  new LoginConfig({
+    gebruikers: parseGebruikers(`wesley=${HASH}`),
+    geheim: 'x'.repeat(40),
+    cookieSecure: true,
+    cookiePad: '/gods-eye-view',
+  });
 
-const inloggen = (get, wachtwoord) => get('/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({ gebruiker: 'wesley', wachtwoord }).toString(),
-});
+const inloggen = (get, wachtwoord) =>
+  get('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ gebruiker: 'wesley', wachtwoord }).toString(),
+  });
 
 test('login off: the app is open, health answers, /login goes home', async () => {
   await metServer(new LoginConfig(), async (get) => {
     assert.equal(await (await get('/')).text(), 'app');
     assert.deepEqual(await (await get('/api/health')).json(), { status: 'ok' });
-    assert.deepEqual(await (await get('/api/sessie')).json(), { login: false, gebruiker: null });
+    assert.deepEqual(await (await get('/api/sessie')).json(), {
+      login: false,
+      gebruiker: null,
+    });
     const r = await get('/login');
     assert.equal(r.status, 303);
     assert.equal(r.headers.get('location'), './');
@@ -59,7 +67,11 @@ test('login on: everything is closed without a session, with relative redirects'
     assert.equal(r.headers.get('location'), '../login');
     r = await get('/api/tomtom/status');
     assert.equal(r.status, 401);
-    assert.equal((await get('/api/health')).status, 200, 'health stays open for the container check');
+    assert.equal(
+      (await get('/api/health')).status,
+      200,
+      'health stays open for the container check',
+    );
     r = await get('/login');
     assert.equal(r.status, 200);
     assert.match(await r.text(), /action="login"/);
@@ -90,7 +102,10 @@ test('a wrong password is refused, a right one opens the app with a scoped cooki
     assert.equal(await r.text(), 'app');
     r = await get('/api/tomtom/status', { headers: { cookie } });
     assert.equal(r.status, 200);
-    assert.deepEqual(await (await get('/api/sessie', { headers: { cookie } })).json(), { login: true, gebruiker: 'wesley' });
+    assert.deepEqual(
+      await (await get('/api/sessie', { headers: { cookie } })).json(),
+      { login: true, gebruiker: 'wesley' },
+    );
 
     r = await get('/uitloggen', { method: 'POST', headers: { cookie } });
     assert.equal(r.status, 303);
@@ -110,17 +125,33 @@ test('five wrong passwords block the name, even for the right password', async (
 
 test('behind the trusted nginx a logged-in request reaches providers as same-origin', async () => {
   const { trustProxiedRequest } = await import('./plugin.js');
-  const req = { headers: {
-    host: 'wharkema.nl', origin: 'https://wharkema.nl', 'x-forwarded-proto': 'https',
-    'x-forwarded-for': '1.2.3.4', 'x-real-ip': '1.2.3.4', 'sec-fetch-site': 'same-origin',
-  } };
+  const req = {
+    headers: {
+      host: 'wharkema.nl',
+      origin: 'https://wharkema.nl',
+      'x-forwarded-proto': 'https',
+      'x-forwarded-for': '1.2.3.4',
+      'x-real-ip': '1.2.3.4',
+      'sec-fetch-site': 'same-origin',
+    },
+  };
   trustProxiedRequest(req);
   assert.equal(req.headers.origin, 'http://wharkema.nl');
   assert.equal(req.headers['x-forwarded-for'], undefined);
   assert.equal(req.headers['x-real-ip'], undefined);
   assert.equal(req.headers['sec-fetch-site'], 'same-origin', 'never touched');
 
-  const foreign = { headers: { host: 'wharkema.nl', origin: 'https://evil.example', 'x-forwarded-proto': 'https' } };
+  const foreign = {
+    headers: {
+      host: 'wharkema.nl',
+      origin: 'https://evil.example',
+      'x-forwarded-proto': 'https',
+    },
+  };
   trustProxiedRequest(foreign);
-  assert.equal(foreign.headers.origin, 'https://evil.example', 'a foreign Origin stays foreign');
+  assert.equal(
+    foreign.headers.origin,
+    'https://evil.example',
+    'a foreign Origin stays foreign',
+  );
 });

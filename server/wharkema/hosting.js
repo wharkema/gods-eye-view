@@ -26,16 +26,27 @@ export function applySelfHosting(config, { command, env = process.env } = {}) {
   if (env.GEV_SELF_HOSTING !== '1') return config;
   const plugins = (config.plugins || []).map(alsoServeInPreview);
   // Fork-only API routes go before upstream's /api 404 catch-all.
-  const notFound = plugins.findIndex((plugin) => plugin?.name === 'api-not-found');
-  plugins.splice(notFound < 0 ? plugins.length : notFound, 0, alsoServeInPreview(cartoLabelsProxy()));
-  const hostCheck = plugins.findIndex((plugin) => plugin?.name === 'host-check');
+  const notFound = plugins.findIndex(
+    (plugin) => plugin?.name === 'api-not-found',
+  );
+  plugins.splice(
+    notFound < 0 ? plugins.length : notFound,
+    0,
+    alsoServeInPreview(cartoLabelsProxy()),
+  );
+  const hostCheck = plugins.findIndex(
+    (plugin) => plugin?.name === 'host-check',
+  );
   plugins.splice(hostCheck + 1, 0, loginGate());
   return {
     ...config,
     plugins,
     base: command === 'build' ? './' : '/',
     // The client registers the fork's own layers (Map Labels) only here.
-    define: { ...config.define, 'import.meta.env.GEV_SELF_HOSTING': JSON.stringify('1') },
+    define: {
+      ...config.define,
+      'import.meta.env.GEV_SELF_HOSTING': JSON.stringify('1'),
+    },
     preview: {
       ...config.preview,
       host: config.server?.host,

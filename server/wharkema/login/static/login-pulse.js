@@ -1,22 +1,24 @@
-"use strict";
+'use strict';
 
 // "Magnetic pulse": langzaam uitdijende ringen achter de loginkaart.
 // Alleen in de weergave Aurora; bij "minder beweging" staat de animatie stil (één vast beeld).
 (function () {
-  const canvas = document.getElementById("pulseCanvas");
+  const canvas = document.getElementById('pulseCanvas');
   if (!canvas || !canvas.getContext) return;
-  if (document.documentElement.dataset.thema !== "aurora") {
-    canvas.dataset.animatie = "uit"; // SUPERP: geen ringen
+  if (document.documentElement.dataset.thema !== 'aurora') {
+    canvas.dataset.animatie = 'uit'; // SUPERP: geen ringen
     canvas.hidden = true;
     return;
   }
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d');
 
-  const kleuren = ["#6927ff", "#8c52ff", "#38bdf8", "#a855f7"];
+  const kleuren = ['#6927ff', '#8c52ff', '#38bdf8', '#a855f7'];
   const maxAlpha = 0.4; // subtiel, niet overheersend
   const snelheid = 0.1; // vaste snelheid
   const aantalRingen = 10;
-  const minderBeweging = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const minderBeweging = window.matchMedia(
+    '(prefers-reduced-motion: reduce)',
+  ).matches;
 
   let breedte = 0;
   let hoogte = 0;
@@ -24,9 +26,11 @@
   let midY = 0;
 
   // Het middelpunt van de ringen is het midden van het loginblok
-  const kaart = document.querySelector(".loginvak");
+  const kaart = document.querySelector('.loginvak');
   function middenBepalen() {
-    const r = kaart ? kaart.getBoundingClientRect() : { left: 0, top: 0, width: breedte, height: hoogte };
+    const r = kaart
+      ? kaart.getBoundingClientRect()
+      : { left: 0, top: 0, width: breedte, height: hoogte };
     midX = r.left + r.width / 2;
     // Hoogte van het blok in de begintoestand (login.js): openklappen van het beheerblok verplaatst de ringen niet
     const basis = kaart ? parseFloat(kaart.dataset.basisHoogte) : NaN;
@@ -67,7 +71,8 @@
     tekenen() {
       const max = maxStraal();
       let zichtbaar = 1;
-      if (this.straal < 50) zichtbaar = this.straal / 50; // invagen
+      if (this.straal < 50)
+        zichtbaar = this.straal / 50; // invagen
       else if (this.straal > max - 200) zichtbaar = (max - this.straal) / 200; // uitvagen
       ctx.beginPath();
       ctx.arc(midX, midY, this.straal, 0, Math.PI * 2);
@@ -93,7 +98,7 @@
     requestAnimationFrame(animeren); // pauzeert vanzelf als het tabblad niet zichtbaar is
   }
 
-  window.addEventListener("resize", () => {
+  window.addEventListener('resize', () => {
     maatAanpassen();
     beeld();
   });
@@ -102,10 +107,11 @@
     middenBepalen();
     if (minderBeweging) beeld();
   };
-  if (kaart && "ResizeObserver" in window) new ResizeObserver(opnieuwMidden).observe(kaart);
-  window.addEventListener("scroll", opnieuwMidden, { passive: true });
-  window.addEventListener("login-geplaatst", opnieuwMidden);
-  canvas.dataset.animatie = minderBeweging ? "stil" : "aan";
+  if (kaart && 'ResizeObserver' in window)
+    new ResizeObserver(opnieuwMidden).observe(kaart);
+  window.addEventListener('scroll', opnieuwMidden, { passive: true });
+  window.addEventListener('login-geplaatst', opnieuwMidden);
+  canvas.dataset.animatie = minderBeweging ? 'stil' : 'aan';
   if (minderBeweging) beeld();
   else animeren();
 })();

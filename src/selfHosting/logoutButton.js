@@ -12,7 +12,8 @@ export function initLogoutButton(doc = document) {
     .then((sessie) => {
       if (!sessie?.login) return;
       knop.hidden = false;
-      if (sessie.gebruiker) knop.title = t('Log out ({user})', { user: sessie.gebruiker });
+      if (sessie.gebruiker)
+        knop.title = t('Log out ({user})', { user: sessie.gebruiker });
     })
     .catch(() => {});
 }

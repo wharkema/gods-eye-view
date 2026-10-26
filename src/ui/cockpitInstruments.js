@@ -322,8 +322,9 @@ export function clearPredictiveRoute() {
  * the knots unit. Kept as one block so upstream's code above stays untouched.
  */
 function applyMetricInstruments(instruments, info, speedKt, forceContext) {
-  const speedUnit =
-    instruments.speed?.parentElement?.querySelector('.cockpit-readout-unit');
+  const speedUnit = instruments.speed?.parentElement?.querySelector(
+    '.cockpit-readout-unit',
+  );
   if (speedUnit) {
     speedUnit.style.letterSpacing = '0.08em';
     speedUnit.style.whiteSpace = 'nowrap';
@@ -333,8 +334,9 @@ function applyMetricInstruments(instruments, info, speedKt, forceContext) {
         : `${t('KTS')} · ${formatNumber(Math.round(speedKt * KT_TO_KMH))} ${unitLabel('km/h').toUpperCase()}`;
   }
   const metres = unitLabel('m').toUpperCase();
-  const altitudeUnit =
-    instruments.altitude?.parentElement?.querySelector('.cockpit-readout-unit');
+  const altitudeUnit = instruments.altitude?.parentElement?.querySelector(
+    '.cockpit-readout-unit',
+  );
   if (altitudeUnit) altitudeUnit.textContent = metres;
   const rimLabel = instruments.altitudeRim?.querySelector(
     '.cockpit-altitude-rim-label',

@@ -47,12 +47,21 @@ export function basePathFromModuleUrl(moduleUrl) {
  * @param {string} [pageHref] - Page URL used to resolve and to judge same-origin.
  * @returns {string|URL} The input itself when unchanged, else the prefixed URL.
  */
-export function withBase(input, base = BASE, pageHref = globalThis.location?.href) {
+export function withBase(
+  input,
+  base = BASE,
+  pageHref = globalThis.location?.href,
+) {
   if (base === '/' || !pageHref) return input;
   if (typeof input !== 'string' && !(input instanceof URL)) return input;
   const raw = String(input);
   const rootAbsolute = raw.startsWith('/') && !raw.startsWith('//');
-  if (!rootAbsolute && !/^[a-z][a-z0-9+.-]*:/i.test(raw) && !raw.startsWith('//')) return input;
+  if (
+    !rootAbsolute &&
+    !/^[a-z][a-z0-9+.-]*:/i.test(raw) &&
+    !raw.startsWith('//')
+  )
+    return input;
   let url;
   try {
     url = new URL(raw, pageHref);
@@ -60,8 +69,13 @@ export function withBase(input, base = BASE, pageHref = globalThis.location?.hre
     return input;
   }
   // blob: URLs share the page origin but are not paths on the server.
-  if (!/^https?:$/.test(url.protocol) || url.origin !== new URL(pageHref).origin) return input;
-  if (url.pathname.startsWith(base) || `${url.pathname}/` === base) return input;
+  if (
+    !/^https?:$/.test(url.protocol) ||
+    url.origin !== new URL(pageHref).origin
+  )
+    return input;
+  if (url.pathname.startsWith(base) || `${url.pathname}/` === base)
+    return input;
   url.pathname = base + url.pathname.replace(/^\/+/, '');
   if (rootAbsolute) return url.pathname + url.search + url.hash;
   return input instanceof URL ? url : url.href;
@@ -74,7 +88,10 @@ function installBasePath() {
   window.fetch = (input, init) => {
     if (input instanceof Request) {
       const next = withBase(input.url);
-      return nativeFetch(next === input.url ? input : new Request(next, input), init);
+      return nativeFetch(
+        next === input.url ? input : new Request(next, input),
+        init,
+      );
     }
     return nativeFetch(withBase(input), init);
   };
@@ -89,7 +106,10 @@ function installBasePath() {
     navigator.sendBeacon = (url, data) => nativeBeacon(withBase(url), data);
   }
 
-  const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  const srcDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLImageElement.prototype,
+    'src',
+  );
   if (srcDescriptor?.set) {
     Object.defineProperty(HTMLImageElement.prototype, 'src', {
       ...srcDescriptor,
