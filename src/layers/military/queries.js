@@ -11,6 +11,11 @@ import {
 } from '../../data/contactMatch.js';
 import { LANDED_ALT_MAX_FT, LANDED_SPEED_MAX_MPS } from './policy.js';
 import { emergencyBroadcastPhrase } from '../../data/aircraftEmergency.js';
+import {
+  METRIC_DISPLAY,
+  FT_TO_M,
+  formatAltitudeMetres,
+} from '../../selfHosting/units.js';
 
 export function createQueries({
   flightState,
@@ -57,6 +62,7 @@ export function createQueries({
 
   function _formatAltitude(altitudeFt) {
     if (!Number.isFinite(altitudeFt)) return t('Alt unknown');
+    if (METRIC_DISPLAY) return formatAltitudeMetres(altitudeFt * FT_TO_M);
     return `${Math.round(altitudeFt)} ft`;
   }
 

@@ -25,6 +25,7 @@ import {
   AMBER_TRANSPARENT,
   TRACKED_ICON_COLOR,
 } from './policy.js';
+import { METRIC_DISPLAY, formatSpeedMps } from '../../selfHosting/units.js';
 
 export function createTracking({
   flightState,
@@ -116,9 +117,11 @@ export function createTracking({
         altitude: described.onGround
           ? 'on ground'
           : parts.queries._formatAltitude(info?.altitudeFt),
-        speed: Number.isFinite(described.velocityMps)
-          ? `${Math.round(described.velocityMps * 1.944)} kt`
-          : '',
+        speed: !Number.isFinite(described.velocityMps)
+          ? ''
+          : METRIC_DISPLAY
+            ? `${Math.round(described.velocityMps * 1.94384)} kt (${Math.round(described.velocityMps * 3.6)} km/h)`
+            : `${Math.round(described.velocityMps * 1.944)} kt`,
         heading: Number.isFinite(described.track)
           ? `${Math.round(described.track)}°`
           : '',
@@ -238,7 +241,12 @@ export function createTracking({
       parts.queries._toCleanText(info?.operator) || t('Operator unknown');
     const altitude = parts.queries._formatAltitude(info?.altitudeFt);
     const speedKt = info?.speedMps ? Math.round(info.speedMps * 1.944) : null;
-    const tail = speedKt ? `${altitude} · ${speedKt} kt` : altitude;
+    const speedText = METRIC_DISPLAY
+      ? formatSpeedMps(info?.speedMps || NaN)
+      : speedKt
+        ? `${speedKt} kt`
+        : '';
+    const tail = speedKt && speedText ? `${altitude} · ${speedText}` : altitude;
     return [
       callsign,
       `${type} · ${registration}`,

@@ -4,6 +4,7 @@ import {
   normalizeVesselType,
 } from '../../data/vesselLabels.js';
 import { formatNumber, t } from '../../i18n/index.js';
+import { METRIC_DISPLAY, formatSpeedKnots } from '../../selfHosting/units.js';
 
 export function createCards({
   vesselState,
@@ -167,6 +168,8 @@ export function createCards({
   }
 
   function formatSpeed(speed) {
+    // Self-hosting fork: knots and km/h side by side.
+    if (METRIC_DISPLAY && speed !== null) return formatSpeedKnots(speed);
     return t('{speed}KT', {
       speed:
         speed === null

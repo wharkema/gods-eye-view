@@ -9,6 +9,11 @@
  * supplies the actual drawing surface.
  */
 import { formatNumber, t } from '../i18n/index.js';
+import {
+  METRIC_DISPLAY,
+  formatAltitudeMetres,
+  formatSpeedKnots,
+} from '../selfHosting/units.js';
 
 /** @constant {number} Max characters shown for a label's primary (id) line. */
 const MAX_PRIMARY = 18;
@@ -26,6 +31,8 @@ const M_TO_FT = 3.28084;
  */
 export function formatFlightLevel(altitudeMeters) {
   if (!Number.isFinite(altitudeMeters) || altitudeMeters <= 0) return '';
+  // Self-hosting fork: metres instead of a flight level.
+  if (METRIC_DISPLAY) return formatAltitudeMetres(altitudeMeters);
   const fl = Math.round((altitudeMeters * M_TO_FT) / 100);
   return 'FL' + String(fl).padStart(3, '0');
 }
@@ -39,6 +46,7 @@ export function formatFlightLevel(altitudeMeters) {
  */
 export function formatKnots(knots) {
   if (!Number.isFinite(knots) || knots <= 0) return '';
+  if (METRIC_DISPLAY) return formatSpeedKnots(knots);
   return t('{speed} kn', { speed: formatNumber(Math.round(knots)) });
 }
 

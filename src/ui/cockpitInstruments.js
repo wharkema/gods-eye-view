@@ -1,5 +1,11 @@
 /** Instrument values, routes and vision controls for the Cockpit controller. */
 import { formatNumber, t } from '../i18n/index.js';
+import { unitLabel } from './unitLabels.js';
+import {
+  KT_TO_KMH,
+  METRIC_DISPLAY,
+  altitudeRulerTicksMetres,
+} from '../selfHosting/units.js';
 import {
   COCKPIT_VISION_MODES,
   normalizeCockpitVisionMode,
@@ -116,6 +122,8 @@ export function updateHud(
     const label = element.querySelector('b');
     if (label) label.textContent = formatAltitudeRulerTick(tick.valueFt);
   });
+  // Self-hosting fork: km/h beside the knots tape, altitude in metres.
+  if (METRIC_DISPLAY) applyMetricInstruments(this, info, speedKt, forceContext);
   setCockpitRollingValue(
     this.headingValue,
     String(Math.round(heading) % 360).padStart(3, '0'),
@@ -306,4 +314,63 @@ export function cycleVisionMode(direction = 1) {
 
 export function clearPredictiveRoute() {
   if (this.routeDirection) this.routeDirection.hidden = true;
+}
+
+/**
+ * Self-hosting fork (src/selfHosting/units.js): after upstream has drawn its
+ * feet and knots, show altitude in metres (readout and tape) and km/h beside
+ * the knots unit. Kept as one block so upstream's code above stays untouched.
+ */
+function applyMetricInstruments(instruments, info, speedKt, forceContext) {
+  const speedUnit =
+    instruments.speed?.parentElement?.querySelector('.cockpit-readout-unit');
+  if (speedUnit) {
+    speedUnit.style.letterSpacing = '0.08em';
+    speedUnit.style.whiteSpace = 'nowrap';
+    speedUnit.textContent =
+      speedKt === null
+        ? t('KTS')
+        : `${t('KTS')} · ${formatNumber(Math.round(speedKt * KT_TO_KMH))} ${unitLabel('km/h').toUpperCase()}`;
+  }
+  const metres = unitLabel('m').toUpperCase();
+  const altitudeUnit =
+    instruments.altitude?.parentElement?.querySelector('.cockpit-readout-unit');
+  if (altitudeUnit) altitudeUnit.textContent = metres;
+  const rimLabel = instruments.altitudeRim?.querySelector(
+    '.cockpit-altitude-rim-label',
+  );
+  if (rimLabel) rimLabel.textContent = `${t('ALTITUDE')} · ${metres}`;
+  const altitudeM = info.onGround === true ? 0 : info.altitudeM;
+  const known = Number.isFinite(altitudeM);
+  if (instruments.altitude) {
+    const shown = known ? Math.round(altitudeM) : null;
+    setCockpitRollingValue(
+      instruments.altitude,
+      shown !== null ? formatNumber(shown) : '-----',
+      shown,
+      { immediate: forceContext },
+    );
+  }
+  if (instruments.altitudeRimValue)
+    instruments.altitudeRimValue.textContent = formatAltitudeRulerTick(
+      known ? altitudeM : null,
+    );
+  const ticks = altitudeRulerTicksMetres(
+    known ? altitudeM : null,
+    instruments.altitudeRimTicks.length,
+  );
+  instruments.altitudeRimTicks.forEach((element, index) => {
+    const tick = ticks[index];
+    element.hidden = !tick;
+    if (!tick) return;
+    element.style.setProperty('--slot', tick.slot.toFixed(4));
+    element.style.setProperty('--depth', tick.depth.toFixed(4));
+    element.style.setProperty(
+      '--curve',
+      altitudeRulerCurveInset(tick.slot).toFixed(5),
+    );
+    element.classList.toggle('major', tick.major);
+    const label = element.querySelector('b');
+    if (label) label.textContent = formatAltitudeRulerTick(tick.valueM);
+  });
 }

@@ -24,6 +24,11 @@ import {
   TRAIL_COLOR,
   CYAN_TRANSPARENT,
 } from './policy.js';
+import {
+  METRIC_DISPLAY,
+  formatAltitudeMetres,
+  formatSpeedMps,
+} from '../../selfHosting/units.js';
 
 export function createTracking({
   flightState,
@@ -121,10 +126,14 @@ export function createTracking({
         type: described.typeName || described.typeCode || '',
         altitude: described.onGround
           ? 'on ground'
-          : `${altFt.toLocaleString('en-US')} ft`,
-        speed: Number.isFinite(described.velocityMps)
-          ? `${Math.round(described.velocityMps * 1.944)} kt`
-          : '',
+          : METRIC_DISPLAY
+            ? `${Math.round(described.altitudeM || 0)} m`
+            : `${altFt.toLocaleString('en-US')} ft`,
+        speed: !Number.isFinite(described.velocityMps)
+          ? ''
+          : METRIC_DISPLAY
+            ? `${Math.round(described.velocityMps * 1.94384)} kt (${Math.round(described.velocityMps * 3.6)} km/h)`
+            : `${Math.round(described.velocityMps * 1.944)} kt`,
         heading: Number.isFinite(described.track)
           ? `${Math.round(described.track)}°`
           : '',
@@ -758,11 +767,16 @@ export function createTracking({
     // language ("0 фт · 1 уз").
     const quantity = (value, unit) =>
       `${formatNumber(value, { useGrouping: false })} ${unitLabel(unit)}`;
-    const fl =
-      altFt >= 18000 ? `FL${Math.round(altFt / 100)}` : quantity(altFt, 'ft');
-    const spd = info.velocity
-      ? quantity(Math.round(info.velocity * 1.944), 'kts')
-      : '';
+    const fl = METRIC_DISPLAY
+      ? formatAltitudeMetres(info.altitude || 0)
+      : altFt >= 18000
+        ? `FL${Math.round(altFt / 100)}`
+        : quantity(altFt, 'ft');
+    const spd = !info.velocity
+      ? ''
+      : METRIC_DISPLAY
+        ? formatSpeedMps(info.velocity)
+        : quantity(Math.round(info.velocity * 1.944), 'kts');
     const stale =
       flightState.records.missingPolls.get(icao24) || flightState.feed._backoff
         ? t('STALE')
