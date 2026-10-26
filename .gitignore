@@ -1,25 +1,34 @@
 node_modules
 dist
+# Credential files. `.env` alone is not enough: Vite's loadEnv (see
+# server/standalone/vite.config.js) and scripts/setup-doctor.mjs both read the
+# full dotenv ladder — .env, .env.local, .env.<mode> and .env.<mode>.local —
+# so a key placed in any of them is live for the app. Only .env was ignored,
+# leaving the other three committable. .env.example is the tracked template.
 .env
+.env.*
+!.env.example
 *.log
 screenshots/
 qa-shots/
 output/
 .gev-logs/
 .gev-cache/
+# Browser QA gate evidence (screenshots, console and network dumps).
+qa-artifacts/
+# Playwright MCP session logs: browser consoles can carry tokens in URLs.
+.playwright-mcp/
+# Local Claude Code settings and preview configs.
+.claude/
 .DS_Store
 .gstack/
 3d-models/
+pinokio/ENVIRONMENT
+pinokio/.installed
 
-# Runtime temperature grid cache, rewritten every few hours.
-data/temperature-cache.json
+# Transient: a release interrupted mid-assembly (npm run changelog recovers it)
+changelog.d/.assembling/
 
-# Stray dumps from live-site verification runs.
-h.txt
-
-# Stray SPARQL scratch files from research runs.
-*.rq
-
-# Your own camera lists (CCTV_SOURCES_FILE=config/cctv_sources.local.json).
+# Your own camera lists (e.g. config/cctv_sources.local.json).
 # Never in git: this repo is public and they may hold private camera URLs.
 config/*.local.json

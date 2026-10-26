@@ -1,0 +1,354 @@
+/* SUPERP-loginscherm (superp_login): twee weergaven via data-thema op <html>.
+   - superp: SUPERP-huisstijl (petrol, cyaan, Raleway)
+   - aurora (standaard): donker met kleurverloop en ringen, groot logo boven het blok, Instrument Sans
+   Contrast >= 4.5:1, zichtbare focus, klikdoelen >= 44px, rekening met prefers-reduced-motion.
+   Overgenomen uit TTD2026 (app/static/style.css); pas hier alleen het loginscherm aan. */
+
+:root {
+  --petrol: #00343c;
+  --cyaan: #39c2dd;
+
+  --achtergrond: #f5f0ea;
+  --kaart: #ffffff;
+  --rand: #d8d0c4;
+  --tekst: #00343c;
+  --tekst-zacht: #3d5f64;
+  --accent: #39c2dd;
+  --knop-bg: #00343c;
+  --knop-tekst: #ffffff;
+  --invoer-bg: #ffffff;
+  --invoer-tekst: #00343c;
+  --invoer-rand: #b9ada0;
+  --waarschuwing-bg: #fff4d6;
+  --waarschuwing-tekst: #6b4a00;
+  --waarschuwing-rand: #d3a100;
+  --voorstel-bg: #e3f5fa;
+  --voorstel-tekst: #00343c;
+  --focus: #00343c; /* petrol: cyaan haalt op wit geen 3:1 */
+
+  --radius: 8px;
+  --knop-radius: 6px;
+  --schaduw: none;
+  --overgang: 180ms ease-out;
+  color-scheme: light;
+}
+
+[data-thema='superp'] {
+  --achtergrond: #f5f0ea;
+  --kaart: #ffffff;
+  --rand: #ddd5ca;
+  --radius: 6px;
+  --knop-radius: 4px;
+}
+
+[data-thema='aurora'] {
+  --achtergrond: #0b1020;
+  --kaart: #1a1f30;
+  --rand: #3a4058;
+  --tekst: #e2e8f0;
+  --tekst-zacht: #a5b4c8;
+  --accent: #a78bfa;
+  --knop-bg: #6d28d9;
+  --knop-tekst: #ffffff;
+  --invoer-bg: #111827;
+  --invoer-tekst: #f1f5f9;
+  --invoer-rand: #4b5470;
+  --waarschuwing-bg: #3a2e0a;
+  --waarschuwing-tekst: #fde68a;
+  --waarschuwing-rand: #d3a100;
+  --voorstel-bg: #0f3b3a;
+  --voorstel-tekst: #ccfbf1;
+  --focus: #c4b5fd;
+  --radius: 12px;
+  --knop-radius: 10px;
+  --schaduw: 0 8px 32px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: 'Raleway', 'Segoe UI', Arial, sans-serif;
+  font-size: 16px;
+  color: var(--tekst);
+  background: var(--achtergrond);
+  line-height: 1.5;
+}
+[data-thema='aurora'] body {
+  font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
+  background:
+    radial-gradient(
+      900px 500px at 10% -10%,
+      rgba(124, 58, 237, 0.45),
+      transparent 60%
+    ),
+    radial-gradient(
+      700px 500px at 100% 0%,
+      rgba(45, 212, 191, 0.25),
+      transparent 60%
+    ),
+    radial-gradient(
+      800px 600px at 50% 120%,
+      rgba(236, 72, 153, 0.2),
+      transparent 60%
+    ),
+    var(--achtergrond);
+  background-attachment: fixed;
+}
+
+/* Knoppen en invoer */
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  border-radius: var(--knop-radius);
+  padding: 8px 18px;
+  cursor: pointer;
+  border: 2px solid var(--knop-bg);
+  transition:
+    box-shadow var(--overgang),
+    transform var(--overgang);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+button.primair {
+  background: var(--knop-bg);
+  color: var(--knop-tekst);
+}
+[data-thema='aurora'] button.primair {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-color: transparent;
+}
+button:hover {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+button:active {
+  transform: translateY(1px);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+label.veld {
+  display: block;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  font: inherit;
+  color: var(--invoer-tekst);
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--invoer-rand);
+  border-radius: calc(var(--radius) / 2);
+  background: var(--invoer-bg);
+  transition: border-color var(--overgang);
+}
+input:hover {
+  border-color: var(--accent);
+}
+
+/* Meldingen */
+.waarschuwing {
+  background: var(--waarschuwing-bg);
+  color: var(--waarschuwing-tekst);
+  border-left: 4px solid var(--waarschuwing-rand);
+  border-radius: 0 4px 4px 0;
+}
+.voorstel {
+  background: var(--voorstel-bg);
+  color: var(--voorstel-tekst);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Het loginscherm */
+body.loginpagina {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+/* login.js zet het geheel (logo + blok) midden in beeld en houdt de bovenkant vast: het beheerblok klapt
+   naar beneden open, zonder dat het logo of het blok omhoog springt */
+body.loginpagina.geplaatst {
+  place-items: start center;
+  padding-top: var(--login-boven, 16px);
+}
+/* Animatie met ringen achter de loginkaart (login-pulse.js); klikken gaan er dwars doorheen */
+#pulseCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+#pulseCanvas[hidden] {
+  display: none;
+}
+.loginvak {
+  position: relative;
+  z-index: 1;
+}
+/* Blok + logo: het logo hangt boven het blok, buiten het blok zelf */
+.loginstapel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+}
+.loginlogo {
+  display: none;
+}
+[data-thema='aurora'] .loginlogo {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 28px);
+  margin: 0;
+  text-align: center;
+  font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.75rem, 9vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  background: linear-gradient(
+    90deg,
+    #7c3aed 0%,
+    #8b7cf0 35%,
+    #3fd0e0 72%,
+    #4fe3c8 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+[data-thema='aurora'] .loginvak .logo {
+  display: none;
+} /* het grote logo staat erboven */
+@media (max-height: 700px) {
+  /* Lage schermen: het logo in de stroom, zodat het niet boven het scherm uitvalt */
+  [data-thema='aurora'] .loginlogo {
+    position: static;
+    margin-bottom: 20px;
+  }
+}
+.loginvak {
+  width: min(
+    560px,
+    100%
+  ); /* breed genoeg voor meldingen en uitleg op één of twee regels */
+  background: var(--kaart);
+  border: 1px solid var(--rand);
+  border-top: 6px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--schaduw);
+  padding: 28px;
+}
+.loginvak .logo {
+  color: var(--tekst);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.loginvak h1 {
+  margin: 4px 0 8px;
+  font-size: 1.5rem;
+}
+.loginvak .intro {
+  color: var(--tekst-zacht);
+  margin: 0 0 16px;
+}
+.loginvak button {
+  width: 100%;
+  justify-content: center;
+  margin-top: 20px;
+}
+.loginvak .waarschuwing {
+  font-size: 0.95rem;
+  padding: 8px 10px;
+}
+.loginvak .voorstel {
+  font-size: 0.95rem;
+  padding: 8px 10px;
+}
+.loginvak .hint {
+  color: var(--tekst-zacht);
+  font-size: 0.85rem;
+  margin: 6px 0 0;
+}
+.loginvak .hint a {
+  color: var(--tekst);
+}
+.loginvak #code {
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.loginvak .wachtwoordblok {
+  margin-top: 24px;
+  border-top: 1px solid var(--rand);
+  padding-top: 12px;
+}
+.loginvak .wachtwoordblok summary {
+  cursor: pointer;
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.loginvak .wachtwoordblok[hidden] {
+  display: none;
+}
+[data-thema='aurora'] .loginvak {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+}
+[data-thema='aurora'] .loginvak .logo {
+  background: linear-gradient(90deg, #a78bfa, #2dd4bf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Aurora-loginscherm: lettertype Instrument Sans en iets compacter (op verzoek, naar een voorbeeldscherm) */
+[data-thema='aurora'] .loginstapel,
+[data-thema='aurora'] .loginvak {
+  width: min(460px, 100%);
+}
+[data-thema='aurora'] .loginvak {
+  padding: 24px;
+  font-family: 'Instrument Sans', 'Manrope', 'Segoe UI', Arial, sans-serif;
+  font-size: 0.95rem;
+}
+[data-thema='aurora'] .loginvak h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+[data-thema='aurora'] .loginvak button {
+  margin-top: 16px;
+}
+[data-thema='aurora'] .loginlogo {
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  bottom: calc(100% + 22px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

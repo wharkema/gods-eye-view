@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatAltitudeMetres,
+  formatFlightLevel,
   formatKnots,
   monoTextWidth,
   composeLabel,
@@ -17,22 +17,22 @@ import {
   rectIntersectsAny,
 } from './detectionDraw.js';
 
-test('formatAltitudeMetres reads whole metres', () => {
-  assert.equal(formatAltitudeMetres(10363.4), '10363 m');
-  assert.equal(formatAltitudeMetres(1524), '1524 m');
+test('formatFlightLevel converts metres to a 3-digit flight level', () => {
+  assert.equal(formatFlightLevel(10363), 'FL340'); // 34,000 ft
+  assert.equal(formatFlightLevel(1524), 'FL050');  // 5,000 ft, zero-padded
 });
 
-test('formatAltitudeMetres returns empty string for missing/zero/negative altitude', () => {
-  assert.equal(formatAltitudeMetres(0), '');
-  assert.equal(formatAltitudeMetres(-50), '');
-  assert.equal(formatAltitudeMetres(null), '');
-  assert.equal(formatAltitudeMetres(undefined), '');
-  assert.equal(formatAltitudeMetres(NaN), '');
+test('formatFlightLevel returns empty string for missing/zero/negative altitude', () => {
+  assert.equal(formatFlightLevel(0), '');
+  assert.equal(formatFlightLevel(-50), '');
+  assert.equal(formatFlightLevel(null), '');
+  assert.equal(formatFlightLevel(undefined), '');
+  assert.equal(formatFlightLevel(NaN), '');
 });
 
 test('formatKnots rounds and suffixes; omits non-positive/non-finite', () => {
-  assert.equal(formatKnots(14), '14 kn · 26 km/h');
-  assert.equal(formatKnots(14.6), '15 kn · 27 km/h');
+  assert.equal(formatKnots(14), '14 kn');
+  assert.equal(formatKnots(14.6), '15 kn');
   assert.equal(formatKnots(0), '');
   assert.equal(formatKnots(null), '');
   assert.equal(formatKnots(NaN), '');
@@ -160,4 +160,46 @@ test('nearFarScale interpolates by distance and clamps to the near/far values', 
   assert.equal(nearFarScale(9e6, 1000, 3.0, 8000000, 0.5), 0.5);   // beyond far -> clamp
   const mid = nearFarScale((1000 + 8000000) / 2, 1000, 3.0, 8000000, 0.5);
   assert.ok(Math.abs(mid - 1.75) < 1e-6, `midpoint ~1.75, got ${mid}`);
+});
+
+
+test('transit brackets paint a 1.25 px mode stroke over 3.25 px dark backing', async () => {
+  const { paintTransitBracket } = await import('./detectionDraw.js');
+  const strokes = [];
+  const ctx = { stroke(path) { strokes.push([path, this.lineWidth, this.strokeStyle, this.globalAlpha]); } };
+  const path = {};
+  paintTransitBracket(ctx, path, '#FF4538', 0.75);
+  assert.deepEqual(strokes, [[path, 3.25, '#05080C', 0.75], [path, 1.25, '#FF4538', 0.75]]);
+});
+
+test('transit bracket backing and colour use source-over under every inherited sensor theme', async () => {
+  const {paintTransitBracket}=await import('./detectionDraw.js');
+  for(const theme of ['normal','thermal','surveillance','noir','retro']) {
+    const strokes=[];
+    const ctx={globalCompositeOperation:'screen',globalAlpha:0.3,stroke(p){strokes.push([this.globalCompositeOperation,this.lineWidth,this.strokeStyle]);},save(){this.saved=[this.globalCompositeOperation,this.globalAlpha];},restore(){[this.globalCompositeOperation,this.globalAlpha]=this.saved;}};
+    paintTransitBracket(ctx,{},'#FF4538',1);
+    assert.deepEqual(strokes,[['source-over',3.25,'#05080C'],['source-over',1.25,'#FF4538']],theme);
+    assert.equal(ctx.globalCompositeOperation,'screen');
+  }
+});
+
+test('transit bracket stroke centres have full pixel coverage at the failing fractional positions', async () => {
+  const {appendTransitBracket}=await import('./detectionDraw.js');
+  for(const sy of [305.076,490.54,279.56]) {
+    const points=[],sink={moveTo:(x,y)=>points.push([x,y]),lineTo:(x,y)=>points.push([x,y])};
+    appendTransitBracket(sink,759.016,sy,11,7);
+    assert.equal(points.length,12);
+    for(const [x,y] of points){assert.equal(x%1,0.5);assert.equal(y%1,0.5);}
+  }
+});
+
+test('formatKnots writes the unit in the UI language', async () => {
+  const { setLocale } = await import('../i18n/index.js');
+  setLocale('ru');
+  try {
+    assert.equal(formatKnots(9.5), '10 уз');
+  } finally {
+    setLocale('en');
+  }
+  assert.equal(formatKnots(9.5), '10 kn');
 });

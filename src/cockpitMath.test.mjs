@@ -6,14 +6,16 @@ import {
   altitudeRulerCurveInset,
   bearingBetweenCoordinates,
   cockpitAnchorCorrectionStep,
-  cockpitAltitudeDisplayM,
+  cockpitAltitudeDisplayFt,
   cockpitGroundSafeHeight,
   cockpitSurfaceWaitExpired,
   cockpitUiUpdateDue,
   compassDivisions,
   formatAltitudeRulerTick,
   formatCockpitContextScope,
+  formatCockpitEmergency,
   formatCompassDivision,
+  formatHeadingReadout,
   formatSpeedRulerTick,
   normalizeHeading,
   relativeBearing,
@@ -60,9 +62,9 @@ test('cockpit camera clearance never falls below the rendered ground floor', () 
 });
 
 test('cockpit altitude reads zero on the ground without changing airborne MSL', () => {
-  assert.equal(cockpitAltitudeDisplayM(200.56, true), 0);
-  assert.equal(cockpitAltitudeDisplayM(3048, false), 3048);
-  assert.equal(cockpitAltitudeDisplayM(null, false), null);
+  assert.equal(cockpitAltitudeDisplayFt(200.56, true), 0);
+  assert.ok(Math.abs(cockpitAltitudeDisplayFt(3048, false) - 10000) < 0.01);
+  assert.equal(cockpitAltitudeDisplayFt(null, false), null);
 });
 
 test('cockpit Context scope distinguishes radius-complete feeds from viewport installations', () => {
@@ -88,24 +90,24 @@ test('cockpit Context scope preserves zero and replaces missing values intention
 });
 
 test('altitude ruler chooses tighter intervals close to the surface', () => {
-  assert.equal(altitudeRulerStep(1200), 50);
-  assert.equal(altitudeRulerStep(3000), 100);
-  assert.equal(altitudeRulerStep(10000), 200);
-  assert.equal(altitudeRulerStep(Number.NaN), 200);
+  assert.equal(altitudeRulerStep(1200), 100);
+  assert.equal(altitudeRulerStep(9000), 250);
+  assert.equal(altitudeRulerStep(34000), 500);
+  assert.equal(altitudeRulerStep(Number.NaN), 500);
 });
 
 test('altitude ruler ticks move fractionally behind the fixed pointer', () => {
-  const ticks = altitudeRulerTicks(10650); // metres, 200 m steps
+  const ticks = altitudeRulerTicks(34875);
   assert.equal(ticks.length, 9);
-  assert.equal(ticks[4].valueM, 10600);
-  assert.equal(ticks[4].slot, -0.25);
-  assert.equal(ticks[5].valueM, 10800);
-  assert.equal(ticks[5].slot, 0.75);
+  assert.equal(ticks[4].valueFt, 34500);
+  assert.equal(ticks[4].slot, -0.75);
+  assert.equal(ticks[5].valueFt, 35000);
+  assert.equal(ticks[5].slot, 0.25);
   assert.equal(ticks[5].major, true);
 });
 
 test('altitude ruler clamps below ground and formats fixed-width labels', () => {
-  assert.equal(altitudeRulerTicks(-20)[4].valueM, 0);
+  assert.equal(altitudeRulerTicks(-20)[4].valueFt, 0);
   assert.equal(formatAltitudeRulerTick(900), '00900');
   assert.equal(formatAltitudeRulerTick(34874.6), '34875');
   assert.equal(formatAltitudeRulerTick(null), '-----');
@@ -152,6 +154,14 @@ test('compass divisions remain ordered across north', () => {
 test('compass labels use cardinals where exact and degrees elsewhere', () => {
   assert.equal(formatCompassDivision(270), 'W');
   assert.equal(formatCompassDivision(30), '030');
+});
+
+test('a heading that rounds to north reads 000, not 360', () => {
+  assert.equal(formatHeadingReadout(359.6), '000');
+  assert.equal(formatHeadingReadout(359.4), '359');
+  assert.equal(formatHeadingReadout(0), '000');
+  assert.equal(formatHeadingReadout(10.2), '010');
+  assert.equal(formatHeadingReadout(Number.NaN), '---');
 });
 
 test('great-circle bearing resolves cardinal directions', () => {
@@ -253,7 +263,7 @@ test('Contact panel hides only when there is no snapshot at all', () => {
 
 test('Contact panel survives NEXT onto a vessel or installation subject', () => {
   // The panel owns the NEXT button. Hiding it because the subject is not the
-  // tracked aircraft strands the operator with no way back (this was observed on
+  // tracked aircraft strands the operator with no way back (owner hit this on
   // camera: "click next... whole left panel disappears").
   for (const subject of [
     { layerId: 'ais-live-vessels', id: '353136000', label: 'MAERSK DETROIT' },
@@ -363,4 +373,22 @@ test('tracked-identity resolution falls back to layer precedence', () => {
   assert.equal(resolveTrackedAircraftInfo({ military, trackedId: '' }).layerId, 'military');
   assert.equal(resolveTrackedAircraftInfo({ trackedId: 'flights:aaa077' }), null);
   assert.equal(resolveTrackedAircraftInfo(), null);
+});
+
+test('cockpit emergency wording states the broadcast code, not a conclusion', () => {
+  assert.equal(
+    formatCockpitEmergency({ label: 'General emergency', squawk: '7700', source: 'squawk', severity: 'emergency' }),
+    'SQUAWK 7700 · GENERAL EMERGENCY',
+  );
+  assert.equal(
+    formatCockpitEmergency({ label: 'Downed aircraft', squawk: '1200', source: 'ads-b', severity: 'emergency' }),
+    'ADS-B EMERGENCY · DOWNED AIRCRAFT',
+    'an unrelated squawk is not quoted beside an ADS-B status',
+  );
+  assert.equal(
+    formatCockpitEmergency({ label: 'Minimum fuel', squawk: null, source: 'ads-b', severity: 'priority' }),
+    'ADS-B PRIORITY · MINIMUM FUEL',
+  );
+  assert.equal(formatCockpitEmergency(null), null);
+  assert.equal(formatCockpitEmergency({ label: '' }), null);
 });

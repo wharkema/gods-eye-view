@@ -53,6 +53,21 @@ test('buildFireCard: missing acquisition time omits the age segment', () => {
   assert.equal(card.details[0], 'high · N20');
 });
 
+test('buildFireCard: power that rounds to 10 MW drops the decimal', () => {
+  const crossed = buildFireCard(
+    { fire: fire({ frp: 9.96 }), position: {} },
+    NOW,
+  );
+  assert.equal(crossed.title, '▲ 10 MW');
+  const below = buildFireCard(
+    { fire: fire({ frp: 9.94 }), position: {} },
+    NOW,
+  );
+  assert.equal(below.title, '▲ 9.9 MW');
+  const selected = buildSelectedFireCard(fire({ frp: 9.96 }), NOW);
+  assert.equal(selected.title, 'FIRE · 10 MW');
+});
+
 test('buildFireCard: SNPP satellite code renders as SNPP, weak fire is not red', () => {
   const card = buildFireCard({ fire: fire({ satellite: 'N', frp: 0.8, confidence: 0.3 }), position: {} }, NOW);
   assert.match(card.details[0], /SNPP$/);
@@ -85,7 +100,7 @@ test('buildCellCard: plural noun, max FRP and newest age, accent passthrough', (
   assert.equal(card.accent, accentForSeverity('orange'));
 });
 
-// Field finding 2026-07-21: anchors must sit on the DEM once the shared
+// Owner field finding 2026-07-21: anchors must sit on the DEM once the shared
 // ground floor is warm — and the cached per-fire position must re-anchor when
 // the floor lands AFTER the first (cold, height-0) render. Distinct coords
 // from every other test in this file (module caches persist across tests).

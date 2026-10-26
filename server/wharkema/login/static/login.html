@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="nl" data-thema="aurora">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Inloggen · God's Eye View</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="login-bestanden/login.css" />
+  </head>
+  <body class="loginpagina" data-testid="loginpagina">
+    <canvas id="pulseCanvas" aria-hidden="true"></canvas>
+    <div class="loginstapel">
+      <h1 class="loginlogo">God's Eye View</h1>
+      <main class="loginvak">
+        <p class="intro">Log in om verder te gaan.</p>
+        <p
+          class="waarschuwing"
+          id="login-fout"
+          data-testid="login-fout"
+          role="alert"
+          hidden
+        ></p>
+        <form method="post" action="login" data-testid="loginformulier">
+          <label class="veld" for="gebruiker">Gebruikersnaam</label>
+          <input
+            type="text"
+            id="gebruiker"
+            name="gebruiker"
+            autocomplete="username"
+            required
+            maxlength="100"
+            autofocus
+            data-testid="login-gebruiker"
+          />
+          <label class="veld" for="wachtwoord">Wachtwoord</label>
+          <input
+            type="password"
+            id="wachtwoord"
+            name="wachtwoord"
+            autocomplete="current-password"
+            required
+            maxlength="200"
+            data-testid="login-wachtwoord"
+          />
+          <button type="submit" class="primair" data-testid="btn-inloggen">
+            Inloggen
+          </button>
+        </form>
+      </main>
+    </div>
+    <script src="login-bestanden/login.js"></script>
+    <script src="login-bestanden/login-pulse.js"></script>
+  </body>
+</html>

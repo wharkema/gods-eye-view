@@ -56,7 +56,7 @@ const CHROME_EXECUTABLE_CANDIDATES = [
   // tile-gated drain budget under SwiftShader on 2026-07-30 — six
   // false-negative qa-cctv-v2 runs against a healthy build). A deterministic
   // pinned browser beats the newest one for regression harnesses.
-  (() => { try { return puppeteer.executablePath(); } catch { return null; } })(),
+  await puppeteer.executablePath().catch(() => null),
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -84,14 +84,6 @@ function percentile(values, pct) {
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
   if (sorted.length === 0) return Number.NaN;
   return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * pct) - 1)];
-}
-
-function parseJson(value, fallback) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
 }
 
 function analyzeMembership(samples) {

@@ -8,32 +8,46 @@
  * GPU/MSDF renderer. The Canvas2D overlay (detection.js) imports these and
  * supplies the actual drawing surface.
  */
+import { formatNumber, t } from '../i18n/index.js';
+import {
+  METRIC_DISPLAY,
+  formatAltitudeMetres,
+  formatSpeedKnots,
+} from '../selfHosting/units.js';
 
 /** @constant {number} Max characters shown for a label's primary (id) line. */
 const MAX_PRIMARY = 18;
 /** @constant {number} Max characters shown for a label's secondary (class · metric) line. */
 const MAX_SECONDARY = 26;
+/** @constant {number} Metres-to-feet conversion factor. */
+const M_TO_FT = 3.28084;
+
 /**
- * Formats an altitude in metres as a short label for the detection overlay.
- * Returns '' for missing/zero/negative altitude so the label degrades to id-only.
+ * Formats an altitude in metres as an aviation flight level (hundreds of feet),
+ * zero-padded to three digits. Returns '' for missing/zero/negative altitude so
+ * the label gracefully degrades to id-only.
  * @param {number} altitudeMeters - Altitude above sea level in metres.
- * @returns {string} e.g. '10363 m', or '' when not applicable.
+ * @returns {string} e.g. 'FL340', or '' when not applicable.
  */
-export function formatAltitudeMetres(altitudeMeters) {
+export function formatFlightLevel(altitudeMeters) {
   if (!Number.isFinite(altitudeMeters) || altitudeMeters <= 0) return '';
-  return Math.round(altitudeMeters) + ' m';
+  // Self-hosting fork: metres instead of a flight level.
+  if (METRIC_DISPLAY) return formatAltitudeMetres(altitudeMeters);
+  const fl = Math.round((altitudeMeters * M_TO_FT) / 100);
+  return 'FL' + String(fl).padStart(3, '0');
 }
 
 /**
- * Formats a speed in knots as a short rounded label, with km/h beside it.
+ * Formats a speed in knots as a short rounded label in the UI language.
  * Returns '' for non-positive or non-finite speeds (declutters moored/unknown
  * vessels).
  * @param {number} knots - Speed over ground in knots.
- * @returns {string} e.g. '14 kn · 26 km/h', or '' when not applicable.
+ * @returns {string} e.g. '14 kn' (ru '14 уз'), or '' when not applicable.
  */
 export function formatKnots(knots) {
   if (!Number.isFinite(knots) || knots <= 0) return '';
-  return `${Math.round(knots)} kn · ${Math.round(knots * 1.852)} km/h`;
+  if (METRIC_DISPLAY) return formatSpeedKnots(knots);
+  return t('{speed} kn', { speed: formatNumber(Math.round(knots)) });
 }
 
 /**
@@ -207,11 +221,14 @@ export function measureTrackLabel(primary, micro, charWidth) {
  */
 export function rectIntersectsAny(rect, obstacles, padding = 0) {
   if (!rect || !Array.isArray(obstacles)) return false;
-  return obstacles.some((obstacle) => obstacle
-    && rect.x < obstacle.x + obstacle.w + padding
-    && rect.x + rect.w + padding > obstacle.x
-    && rect.y < obstacle.y + obstacle.h + padding
-    && rect.y + rect.h + padding > obstacle.y);
+  return obstacles.some(
+    (obstacle) =>
+      obstacle &&
+      rect.x < obstacle.x + obstacle.w + padding &&
+      rect.x + rect.w + padding > obstacle.x &&
+      rect.y < obstacle.y + obstacle.h + padding &&
+      rect.y + rect.h + padding > obstacle.y,
+  );
 }
 
 /**
@@ -232,4 +249,29 @@ export function nearFarScale(distance, near, nearValue, far, farValue) {
   if (distance >= far) return farValue;
   const t = (distance - near) / (far - near);
   return nearValue + t * (farValue - nearValue);
+}
+
+/** Transit keeps literal mode colour on the normal-composite surface. */
+export function paintTransitBracket(ctx, path, color, alpha = 1) {
+  ctx.save?.();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#05080C';
+  ctx.lineWidth = 3.25;
+  ctx.stroke(path);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.25;
+  ctx.stroke(path);
+  ctx.restore?.();
+}
+
+/** Centre 1.25 px strokes on pixels, so their cores are fully covered. */
+export function appendTransitBracket(sink, sx, sy, halfW, halfH) {
+  appendCornerBracket(
+    sink,
+    Math.floor(sx) + 0.5,
+    Math.floor(sy) + 0.5,
+    Math.round(halfW),
+    Math.round(halfH),
+  );
 }

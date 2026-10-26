@@ -18,6 +18,7 @@ import {
   SCOPE_TERMINUS_MIN_PCT,
   SCOPE_TERMINUS_MAX_PCT,
   SCOPE_FEATHER_RATIO_DEFAULT,
+  getScopeMaskFeather,
   SCOPE_OUTSIDE_ALPHA,
   SCOPE_TERMINUS_ALPHA_NEAR,
   SCOPE_TERMINUS_FAR_M,
@@ -26,6 +27,7 @@ import {
   _resetScopeMaskForTest,
 } from './scopeMask.js';
 import { KEYHOLE_OUTER_RADIUS } from './celestialRing.js';
+import { SCOPE_FEATHER_RATIO_MAX, clampScopeFeatherPct } from './scopeMaskPolicy.js';
 
 beforeEach(() => _resetScopeMaskForTest());
 
@@ -47,14 +49,32 @@ test('zero feather produces a hard edge exactly at the keyhole radius', () => {
   assert.equal(geo.outerR, keyholeR);
 });
 
-test('feather ratio is clamped to [0,1] and bad input falls back to 0', () => {
+test('feather ratio reaches the center at 200% and clamps larger input', () => {
   const wide = scopeMaskGeometry(1000, 800, 7);
-  const one = scopeMaskGeometry(1000, 800, 1);
-  assert.equal(wide.innerR, one.innerR);
-  assert.equal(wide.outerR, one.outerR);
+  const maximum = scopeMaskGeometry(1000, 800, SCOPE_FEATHER_RATIO_MAX);
+  const keyholeR = 800 * 0.5 * KEYHOLE_OUTER_RADIUS;
+  assert.equal(maximum.innerR, 0);
+  assert.equal(maximum.outerR, keyholeR * 2);
+  assert.equal(wide.innerR, maximum.innerR);
+  assert.equal(wide.outerR, maximum.outerR);
+  for (const ratio of [1, 1.5, 2]) {
+    setScopeMaskFeather(ratio);
+    assert.equal(getScopeMaskFeather(), ratio);
+    const geometry = scopeMaskGeometry(1000, 800);
+    assert.equal((geometry.innerR + geometry.outerR) / 2, keyholeR);
+    assert.equal(geometry.outerR - geometry.innerR, keyholeR * ratio);
+  }
+  setScopeMaskFeather(7);
+  assert.equal(getScopeMaskFeather(), SCOPE_FEATHER_RATIO_MAX);
   const nan = scopeMaskGeometry(1000, 800, Number.NaN);
   const zero = scopeMaskGeometry(1000, 800, 0);
   assert.equal(nan.innerR, zero.innerR);
+});
+
+test('UI and share feather percentages share one bounded integer range', () => {
+  for (const [value, expected] of [[0, 0], [11, 11], [175.6, 176], [200, 200], [350, 200], [-4, 0], [Number.NaN, 0]]) {
+    assert.equal(clampScopeFeatherPct(value), expected);
+  }
 });
 
 test('degenerate viewport yields null instead of a broken gradient', () => {
@@ -76,21 +96,12 @@ test('an omitted feather argument uses the module default, whatever it is', () =
   assert.equal(omitted.outerR, explicit.outerR);
   // And it is not simply ignoring the argument: a different ratio must differ,
   // and must still derive its band from the keyhole radius.
-  //
-  // The probe steps AWAY from whichever end the default sits at, because
-  // scopeMaskGeometry clamps to [0,1]. A fixed `+ 0.4` silently stopped testing
-  // anything when the default reached 1.0 on 2026-08-26 — 1.4 clamps straight
-  // back to the default, so both sides matched and the assertion failed. Same
-  // class of vacuousness the `+ 0.4` form was itself introduced to fix when the
-  // default was 0.
-  const probe = SCOPE_FEATHER_RATIO_DEFAULT > 0.5
-    ? SCOPE_FEATHER_RATIO_DEFAULT - 0.4
-    : SCOPE_FEATHER_RATIO_DEFAULT + 0.4;
-  const wider = scopeMaskGeometry(1200, 900, probe);
+  const wider = scopeMaskGeometry(1200, 900, SCOPE_FEATHER_RATIO_DEFAULT + 0.4);
   assert.notEqual(wider.outerR - wider.innerR, omitted.outerR - omitted.innerR);
   const keyholeR = 900 * 0.5 * KEYHOLE_OUTER_RADIUS;
-  assert.ok(Math.abs((wider.outerR - wider.innerR) - keyholeR * probe) < 1e-9);
-  // The default's VALUE (hidden feather, product invariant 2026-08-22) is pinned
+  assert.ok(Math.abs((wider.outerR - wider.innerR)
+    - keyholeR * (SCOPE_FEATHER_RATIO_DEFAULT + 0.4)) < 1e-9);
+  // The default's VALUE (hidden feather, owner directive 2026-08-22) is pinned
   // with the rest of the first-run batch in reasonableDefaults.test.mjs.
 });
 
@@ -145,12 +156,14 @@ function stubScopeMaskDom({ width = 1000, height = 800, dpr = 1 } = {}) {
       removeEventListener: (type, fn) => listeners.delete(fn),
     }),
   };
-  globalThis.document = { createElement: () => canvas };
+  const documentElement = { dataset: {} };
+  globalThis.document = { documentElement, createElement: () => canvas };
   globalThis.ResizeObserver = class { observe() {} disconnect() {} };
   const container = { clientWidth: width, clientHeight: height, appendChild() {} };
   return {
     canvas,
     container,
+    documentElement,
     /** Canvas work counters: backing-store resizes, clears, fills. */
     ops,
     /** Every fillStyle string assigned since install (hard-crop path). */
@@ -168,6 +181,29 @@ function stubScopeMaskDom({ width = 1000, height = 800, dpr = 1 } = {}) {
     },
   };
 }
+
+test('scope appearance follows direct state changes and install/destroy lifecycles', () => {
+  const dom = stubScopeMaskDom();
+  try {
+    setScopeMaskEnabled(false);
+    assert.equal(dom.documentElement.dataset.scopeMask, 'off');
+    delete dom.documentElement.dataset.scopeMask;
+    installScopeMask({ container: dom.container });
+    assert.equal(dom.documentElement.dataset.scopeMask, 'off', 'install publishes retained OFF state');
+    destroyScopeMask();
+    assert.equal(dom.documentElement.dataset.scopeMask, undefined, 'destroy clears the document marker');
+    installScopeMask({ container: dom.container });
+    assert.equal(dom.documentElement.dataset.scopeMask, 'off', 'reinstall retains the preference');
+    setScopeMaskEnabled(true);
+    assert.equal(dom.documentElement.dataset.scopeMask, undefined, 'ON uses the original presentation');
+    setScopeMaskEnabled(false);
+    _resetScopeMaskForTest();
+    assert.equal(dom.documentElement.dataset.scopeMask, undefined, 'test reset clears the marker');
+  } finally {
+    destroyScopeMask();
+    dom.restore();
+  }
+});
 
 test('a DPR change with no resize still repaints the backing store', () => {
   const dom = stubScopeMaskDom({ width: 1000, height: 800, dpr: 1 });
@@ -210,11 +246,11 @@ test('destroy tears the DPR watch down (no redraw after teardown)', () => {
 //
 // 0.94 is right at TRUE full-globe altitude (faint stars survive in the
 // corners) and wrong everywhere else, where the same 6% bleed reads as smeared
-// geometry. Field band retune (2026-08-17): the fade STARTS at
+// geometry. Owner band retune (2026-08-17 field test): the fade STARTS at
 // ~10 Mm and is finished by ~7 Mm, so every working altitude is solid black.
-// FEATHER behavior is outside this terminus-band test and remains unchanged.
+// FEATHER is untouched (owner locked 35).
 
-test('the terminus band is the validated 10 Mm → 7 Mm fade', () => {
+test('the terminus band is the owner-approved 10 Mm → 7 Mm fade', () => {
   assert.equal(SCOPE_TERMINUS_FAR_M, 10_000_000, 'the relaxed corners start above 10 Mm');
   assert.equal(SCOPE_TERMINUS_NEAR_M, 7_000_000, 'and are gone by 7 Mm');
   assert.equal(scopeTerminusAlpha(10_500_000), SCOPE_OUTSIDE_ALPHA, 'full-globe view keeps its stars');
@@ -370,7 +406,7 @@ test('one quantum is the smallest step that can repaint', () => {
     'the quantum must be finer than the ramp it gates');
 });
 
-// ── SCOPE OFF must be the cheapest state (second review) ─────────────────────
+// ── SCOPE OFF must be the cheapest state (review round 2) ─────────────────────
 //
 // With sc=0 the mask paints nothing, but the camera listeners still sampled at
 // ~8 Hz through the altitude band and draw() performed the full backing-store

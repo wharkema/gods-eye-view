@@ -4,12 +4,25 @@ import createViteConfig, {
   adsbLolFallbackAnchor,
   coalesceProxyRequest,
   launchLibraryRequestHeaders,
+  keylessGooglePlacesResponse,
   LL2_CACHE_TTL_MS,
   readResponseJsonCapped,
   regionalBriefHasAnySource,
   validMilitaryInstallationBox,
   validRegionalPoint,
 } from '../../vite.config.js';
+
+test('missing Google place context is a quiet keyless capability, not a 503', () => {
+  assert.deepEqual(keylessGooglePlacesResponse(undefined), {
+    statusCode: 200,
+    payload: { configured: false, error: null, places: [] },
+  });
+  assert.deepEqual(keylessGooglePlacesResponse('   '), {
+    statusCode: 200,
+    payload: { configured: false, error: null, places: [] },
+  });
+  assert.equal(keylessGooglePlacesResponse('configured-key'), null);
+});
 
 test('regional proxy rejects absent and blank coordinates instead of coercing them to zero', () => {
   assert.equal(validRegionalPoint(new URLSearchParams('longitude=12.5')), null);
@@ -46,9 +59,13 @@ test('new data proxies install the same routes in dev and preview servers', () =
 
 test('Launch Library uses a 15-minute cache and optional server-side token header', () => {
   assert.equal(LL2_CACHE_TTL_MS, 15 * 60_000);
-  assert.deepEqual(launchLibraryRequestHeaders(''), { Accept: 'application/json' });
-  assert.deepEqual(launchLibraryRequestHeaders(' secret '), {
+  const headers = {
     Accept: 'application/json',
+    'User-Agent': 'gods-eye-view-launch-library-proxy/1.0 (+https://github.com/bilawalsidhu/gods-eye-view)',
+  };
+  assert.deepEqual(launchLibraryRequestHeaders(''), headers);
+  assert.deepEqual(launchLibraryRequestHeaders(' secret '), {
+    ...headers,
     Authorization: 'Token secret',
   });
 });

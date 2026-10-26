@@ -12,14 +12,13 @@ import {
   simplifyOverpassPayloadBody,
   isOverpassBoundaryQuery,
   resolveOverpassPreflight,
-  isOverpassSuccess,
 } from '../../vite.config.js';
 
 test('preflight checks memory, in-flight, then disk before consuming limiter quota', async () => {
   const key = 'normalized query';
-  const fresh = { id: 'memory', cachedAt: 900 };
-  const joined = { id: 'inflight', cachedAt: 950 };
-  const disk = { id: 'disk', cachedAt: 975 };
+  const fresh = { id: 'memory', status: 200, cachedAt: 900 };
+  const joined = { id: 'inflight', status: 200, cachedAt: 950 };
+  const disk = { id: 'disk', status: 200, cachedAt: 975 };
   let diskReads = 0;
   let limiterCalls = 0;
   const allowUpstream = () => { limiterCalls += 1; return true; };
@@ -27,7 +26,7 @@ test('preflight checks memory, in-flight, then disk before consuming limiter quo
   const memoryHit = await resolveOverpassPreflight({
     cacheKey: key,
     memoryCache: new Map([[key, fresh]]),
-    inFlight: new Map([[key, Promise.resolve(joined)]]),
+    inFlight: new Map([[key, Promise.resolve({ source: 'UPSTREAM', payload: joined })]]),
     readDisk: async () => { diskReads += 1; return disk; },
     allowUpstream,
     now: 1000,
@@ -40,8 +39,8 @@ test('preflight checks memory, in-flight, then disk before consuming limiter quo
 
   const inFlightHit = await resolveOverpassPreflight({
     cacheKey: key,
-    memoryCache: new Map([[key, { id: 'stale', cachedAt: 0 }]]),
-    inFlight: new Map([[key, Promise.resolve(joined)]]),
+    memoryCache: new Map([[key, { id: 'stale', status: 200, cachedAt: 0 }]]),
+    inFlight: new Map([[key, Promise.resolve({ source: 'UPSTREAM', payload: joined })]]),
     readDisk: async () => { diskReads += 1; return disk; },
     allowUpstream,
     now: 1000,
@@ -52,9 +51,10 @@ test('preflight checks memory, in-flight, then disk before consuming limiter quo
   assert.equal(diskReads, 0, 'in-flight join must short-circuit before disk');
   assert.equal(limiterCalls, 0, 'in-flight join must not consume limiter quota');
 
+  const diskMemory = new Map();
   const diskHit = await resolveOverpassPreflight({
     cacheKey: key,
-    memoryCache: new Map(),
+    memoryCache: diskMemory,
     inFlight: new Map(),
     readDisk: async () => { diskReads += 1; return disk; },
     allowUpstream,
@@ -63,6 +63,8 @@ test('preflight checks memory, in-flight, then disk before consuming limiter quo
   assert.equal(diskHit.payload, disk);
   assert.equal(diskReads, 1);
   assert.equal(limiterCalls, 0, 'disk hit must not consume limiter quota');
+  const publishedDisk = await resolveOverpassPreflight({ cacheKey: key, memoryCache: diskMemory, inFlight: new Map(), now: 1000, readDisk: async () => { throw new Error('disk result was not published'); }, allowUpstream });
+  assert.equal(publishedDisk.source, 'HIT');
 
   const upstreamMiss = await resolveOverpassPreflight({
     cacheKey: key,
@@ -83,6 +85,21 @@ test('preflight checks memory, in-flight, then disk before consuming limiter quo
     allowUpstream: () => false,
   });
   assert.equal(denied.source, 'RATE_LIMITED');
+});
+
+test('preflight treats cached refusals as misses without spending extra quota', async () => {
+  for (const invalid of [{ status: 406 }, { status: 200, runtimeError: true }]) {
+    let admissions = 0;
+    const result = await resolveOverpassPreflight({
+      cacheKey: 'refused',
+      memoryCache: new Map([['refused', { ...invalid, cachedAt: Date.now() }]]),
+      inFlight: new Map(),
+      readDisk: async () => ({ ...invalid, cachedAt: Date.now() }),
+      allowUpstream: () => { admissions++; return true; },
+    });
+    assert.equal(result.source, 'UPSTREAM');
+    assert.equal(admissions, 1);
+  }
 });
 
 /** Synthetic dense ring: N points on a circle with sub-tolerance jitter. */
@@ -201,32 +218,65 @@ function pointSegDistDeg(p, a, b) {
   return Math.hypot(wx - t * vx, wy - t * vy);
 }
 
-// overpass-api.de began answering 406 to generic clients (Oct 2026). The proxy
-// cached every status below 500, so one 406 was then served instantly forever —
-// from memory and from disk across restarts — and the traffic layer never loaded.
-test('only 2xx answers count as cacheable successes', () => {
-  assert.equal(isOverpassSuccess({ status: 200, body: '{}' }), true);
-  assert.equal(isOverpassSuccess({ body: '{}' }), true, 'no status: legacy success');
-  for (const status of [400, 403, 404, 406, 429, 500, 504]) {
-    assert.equal(isOverpassSuccess({ status, body: '' }), false, String(status));
-  }
-  assert.equal(isOverpassSuccess({ status: 200, rateLimited: true }), false);
-  assert.equal(isOverpassSuccess({ status: 200, runtimeError: true }), false);
-  assert.equal(isOverpassSuccess(null), false);
+
+test('cold disk lookup is single-flight through upstream publication and quota admission', async () => {
+  const inFlight = new Map();
+  let release;
+  const disk = new Promise((resolve) => { release = resolve; });
+  let reads = 0, admissions = 0, upstreams = 0;
+  const payload = { status: 200, body: '{"elements":[]}' };
+  const options = {
+    cacheKey: 'cold', memoryCache: new Map(), inFlight,
+    readDisk: () => { reads++; return disk; },
+    allowUpstream: () => { admissions++; return true; },
+    loadUpstream: async () => { upstreams++; return payload; },
+  };
+  const pending = Array.from({ length: 4 }, () => resolveOverpassPreflight(options));
+  await Promise.resolve();
+  assert.equal(inFlight.size, 1);
+  release(null);
+  const results = await Promise.all(pending);
+  assert.equal(reads, 1);
+  assert.equal(admissions, 1);
+  assert.equal(upstreams, 1);
+  assert.ok(results.every((result) => result.payload === payload));
+  assert.deepEqual(results.map((result) => result.source), ['UPSTREAM', 'INFLIGHT', 'INFLIGHT', 'INFLIGHT']);
+  assert.equal(inFlight.size, 0);
+  const failed = { ...options, readDisk: async () => { throw new Error('disk failed'); } };
+  const rejected = await Promise.allSettled([resolveOverpassPreflight(failed), resolveOverpassPreflight(failed)]);
+  assert.ok(rejected.every((result) => result.status === 'rejected'));
+  assert.equal(inFlight.size, 0);
+  await resolveOverpassPreflight({ ...options, readDisk: async () => null });
+  assert.equal(upstreams, 2, 'a rejected reservation does not poison the next retry');
 });
 
-test('preflight never serves a cached refusal from memory', async () => {
-  const key = 'q';
-  let limiterCalls = 0;
-  const result = await resolveOverpassPreflight({
-    cacheKey: key,
-    memoryCache: new Map([[key, { status: 406, body: '<html>', cachedAt: 990 }]]),
-    inFlight: new Map(),
-    readDisk: async () => null,
-    allowUpstream: () => { limiterCalls += 1; return true; },
-    now: 1000,
-    cacheMs: 60_000,
+test('a joined client retries admission with its own quota after another client is rate limited', async () => {
+  const inFlight = new Map();
+  let release;
+  const disk = new Promise((resolve) => { release = resolve; });
+  let reads = 0, upstreams = 0;
+  const admissions = { a: 0, b: 0, c: 0 };
+  const quota = { a: false, b: true, c: false };
+  const payload = { status: 200, body: '{"elements":[]}' };
+  const client = (name) => resolveOverpassPreflight({
+    cacheKey: 'quota', memoryCache: new Map(), inFlight,
+    readDisk: () => { reads++; return reads === 1 ? disk : null; },
+    allowUpstream: () => { admissions[name]++; return quota[name]; },
+    loadUpstream: async () => { upstreams++; return payload; },
   });
-  assert.equal(result.source, 'UPSTREAM');
-  assert.equal(limiterCalls, 1);
+  // A (quota exhausted) owns the cold reservation; B (quota available) and
+  // C (quota exhausted) join it while the disk lookup is pending.
+  const pending = [client('a'), client('b'), client('c')];
+  await Promise.resolve();
+  assert.equal(inFlight.size, 1);
+  release(null);
+  const [a, b, c] = await Promise.all(pending);
+  assert.equal(a.source, 'RATE_LIMITED', "A's own quota still rejects A");
+  assert.equal(b.source, 'UPSTREAM', 'B is admitted on its own quota');
+  assert.equal(b.payload, payload);
+  assert.equal(c.source, 'INFLIGHT', "C coalesces onto B's admitted fetch");
+  assert.equal(c.payload, payload);
+  assert.deepEqual(admissions, { a: 1, b: 1, c: 0 });
+  assert.equal(upstreams, 1);
+  assert.equal(inFlight.size, 0);
 });

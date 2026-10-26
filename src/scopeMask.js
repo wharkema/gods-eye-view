@@ -1,13 +1,14 @@
 import { getKeyholeGeometry } from './celestialRing.js';
+import { SCOPE_FEATHER_RATIO_MAX } from './scopeMaskPolicy.js';
 
 /**
  * Scope mask — the app's signature circular viewport treatment, made real.
  *
- * History (2026-08-08 field test): the scope was never implemented.
+ * History (2026-08-08 owner field test): the scope was never implemented.
  * It emerged from six zero-intensity style PostProcessStages whose stacked
  * "identity" passes progressively smeared the starfield into a circular
  * falloff — every grep for a mask came up empty because none existed. The
- * the decision set: draw it explicitly on a canvas, make the edge featherable
+ * owner ruled: draw it explicitly on a canvas, make the edge featherable
  * (like the NVG/FLIR tube masks), and free the six shader passes for real.
  *
  * Implementation: one fixed canvas parented into the viewer container
@@ -19,7 +20,7 @@ import { getKeyholeGeometry } from './celestialRing.js';
  * QUANTIZED terminus-alpha step (see below). No rAF, no per-frame paint, no
  * render-loop coupling.
  *
- * Altitude-adaptive edge terminus (validated 2026-08-17, band retuned the
+ * Altitude-adaptive edge terminus (owner-approved 2026-08-17, band retuned the
  * same day after a field test): the outside fill's terminus alpha is 0.94 only
  * at TRUE full-globe altitude — above 10 Mm, where the relaxed 6% keeps faint
  * stars alive in the corners — and fades QUICKLY to fully opaque black on the
@@ -41,27 +42,10 @@ import { getKeyholeGeometry } from './celestialRing.js';
 /** Matches the page background the emergent scope faded into. */
 const SCOPE_OUTSIDE_COLOR = { r: 5, g: 5, b: 8 };
 /**
- * Default edge feather as a fraction of the keyhole radius.
- *
- * 1.0 since 2026-08-26 (supersedes 0.11 on 08-24, 0.08 on 08-23, hard-crop 0
- * on 08-22). At 0.11 the mask read as a hard black porthole with the world
- * inside it — most obvious in Flight Sim, where the scene fills the frame and
- * the ring cuts straight across it. Full feather spreads the falloff across the
- * whole keyhole radius, so the edge reads as a soft vignette instead of a
- * circle drawn on top of the picture. The slider is untouched and still spans 0..100; this is
- * only where it STARTS. `setScopeMaskFeather` is unchanged, so any feather a
- * share link carries, or the operator dials in, overrides this immediately, and
- * the hard-crop path at 0 is still reachable from the handle.
- *
- * Keep in lockstep with `#scope-feather-slider`'s markup value AND readout in
- * index.html and `_scopeFeatherPct` in sharelink.js — a fresh boot applies no
- * restore, so those literals ARE the first-run state. NOT the `scf` PARSE
- * fallback, which stays at 35 on purpose: a link predating that field was
- * authored when 35 was what its author saw, and a link from the feather-0 era
- * carries `scf=0` explicitly because the generator always writes the field.
- * Pinned in reasonableDefaults.test.mjs.
+ * First-run feather ratio; the Display slider and share defaults use 100%.
+ * The historical missing-scf parse fallback remains 35%.
  */
-export const SCOPE_FEATHER_RATIO_DEFAULT = 1.0;
+export const SCOPE_FEATHER_RATIO_DEFAULT = 1;
 /**
  * Terminus opacity at/above SCOPE_TERMINUS_FAR_M — slightly translucent so
  * faint stars survive in the corners at globe scale.
@@ -79,7 +63,7 @@ export const SCOPE_TERMINUS_MAX_PCT = 100;
 export const SCOPE_TERMINUS_ALPHA_NEAR = 1;
 /**
  * Camera height at/above which the terminus stays at SCOPE_OUTSIDE_ALPHA.
- * Retune (2026-08-17 field test): the relaxed 6% corners belong to TRUE
+ * Owner retune (2026-08-17 field test): the relaxed 6% corners belong to TRUE
  * full-globe views only — "the moment we go past roughly 10 million m in
  * altitude, looking at the world, it should start quickly fading into black".
  */
@@ -135,9 +119,13 @@ export function scopeTerminusAlpha(heightM) {
   if (h >= SCOPE_TERMINUS_FAR_M) return SCOPE_OUTSIDE_ALPHA;
   if (h <= SCOPE_TERMINUS_NEAR_M) return SCOPE_TERMINUS_ALPHA_NEAR;
   // 0 at the far edge → 1 at the near edge, eased so neither end steps visibly.
-  const t = (SCOPE_TERMINUS_FAR_M - h) / (SCOPE_TERMINUS_FAR_M - SCOPE_TERMINUS_NEAR_M);
+  const t =
+    (SCOPE_TERMINUS_FAR_M - h) / (SCOPE_TERMINUS_FAR_M - SCOPE_TERMINUS_NEAR_M);
   const eased = t * t * (3 - 2 * t);
-  return SCOPE_OUTSIDE_ALPHA + (SCOPE_TERMINUS_ALPHA_NEAR - SCOPE_OUTSIDE_ALPHA) * eased;
+  return (
+    SCOPE_OUTSIDE_ALPHA +
+    (SCOPE_TERMINUS_ALPHA_NEAR - SCOPE_OUTSIDE_ALPHA) * eased
+  );
 }
 
 /**
@@ -151,7 +139,11 @@ export function quantizeScopeTerminusAlpha(alpha) {
   // Round the PRODUCT too: n * 0.005 lands on values like 0.9400000000000001,
   // which would ride straight into the rgba() string. The quantum is 3-decimal,
   // so 3 decimals is lossless here.
-  return Math.round(Math.round(a / SCOPE_TERMINUS_QUANTUM) * SCOPE_TERMINUS_QUANTUM * 1000) / 1000;
+  return (
+    Math.round(
+      Math.round(a / SCOPE_TERMINUS_QUANTUM) * SCOPE_TERMINUS_QUANTUM * 1000,
+    ) / 1000
+  );
 }
 
 /**
@@ -166,10 +158,14 @@ export function clampScopeTerminusPct(value) {
   // boolean — is ABSENT, not zero. (Number(null) === 0 would otherwise pin the
   // floor on every adaptive write.)
   const raw = typeof value === 'string' ? value.trim() : value;
-  if (typeof raw !== 'number' && (typeof raw !== 'string' || raw === '')) return null;
+  if (typeof raw !== 'number' && (typeof raw !== 'string' || raw === ''))
+    return null;
   const pct = Number(raw);
   if (!Number.isFinite(pct)) return null;
-  return Math.max(SCOPE_TERMINUS_MIN_PCT, Math.min(SCOPE_TERMINUS_MAX_PCT, Math.round(pct)));
+  return Math.max(
+    SCOPE_TERMINUS_MIN_PCT,
+    Math.min(SCOPE_TERMINUS_MAX_PCT, Math.round(pct)),
+  );
 }
 
 /**
@@ -203,7 +199,10 @@ export function updateScopeTerminusForHeight(heightM) {
  * @returns {void}
  */
 function withCoalescedPaint(fn) {
-  if (_coalescingPaint) { fn(); return; } // already inside a scope
+  if (_coalescingPaint) {
+    fn();
+    return;
+  } // already inside a scope
   _coalescingPaint = true;
   _paintDirty = false;
   try {
@@ -220,7 +219,9 @@ function withCoalescedPaint(fn) {
 /** @returns {number} Quantized terminus the CURRENT camera + override imply. */
 function currentTerminusTarget() {
   return quantizeScopeTerminusAlpha(
-    _terminusOverride == null ? scopeTerminusAlpha(currentCameraHeightM()) : _terminusOverride,
+    _terminusOverride == null
+      ? scopeTerminusAlpha(currentCameraHeightM())
+      : _terminusOverride,
   );
 }
 
@@ -230,7 +231,10 @@ export function setScopeTerminusOverride(alpha) {
   } else {
     // Same supported band as the `sce` hash key: a sub-globe-scale terminus is
     // a hole in the mask, not a scope, so every entry point floors it.
-    _terminusOverride = Math.max(SCOPE_OUTSIDE_ALPHA, Math.min(1, Number(alpha)));
+    _terminusOverride = Math.max(
+      SCOPE_OUTSIDE_ALPHA,
+      Math.min(1, Number(alpha)),
+    );
   }
   // Re-resolve immediately against the live camera so the override is visible
   // without waiting for the next sample.
@@ -258,7 +262,9 @@ export function getScopeTerminusRepaintCount() {
 }
 
 /** Backing-store scale actually used by the last draw(). */
-export function scopeMaskDevicePixelRatio(ratio = (typeof window !== 'undefined' ? window.devicePixelRatio : 1)) {
+export function scopeMaskDevicePixelRatio(
+  ratio = typeof window !== 'undefined' ? window.devicePixelRatio : 1,
+) {
   return Math.min(2, Number(ratio) || 1);
 }
 
@@ -274,7 +280,8 @@ export function scopeMaskDevicePixelRatio(ratio = (typeof window !== 'undefined'
  * @returns {void}
  */
 function watchDevicePixelRatio() {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function')
+    return;
   teardownDevicePixelRatioWatch();
   const dpr = window.devicePixelRatio || 1;
   let query;
@@ -294,14 +301,18 @@ function watchDevicePixelRatio() {
       draw();
     });
   };
-  if (typeof query.addEventListener === 'function') query.addEventListener('change', _dprListener, { once: true });
-  else if (typeof query.addListener === 'function') query.addListener(_dprListener);
+  if (typeof query.addEventListener === 'function')
+    query.addEventListener('change', _dprListener, { once: true });
+  else if (typeof query.addListener === 'function')
+    query.addListener(_dprListener);
 }
 
 function teardownDevicePixelRatioWatch() {
   if (_dprQuery && _dprListener) {
-    if (typeof _dprQuery.removeEventListener === 'function') _dprQuery.removeEventListener('change', _dprListener);
-    else if (typeof _dprQuery.removeListener === 'function') _dprQuery.removeListener(_dprListener);
+    if (typeof _dprQuery.removeEventListener === 'function')
+      _dprQuery.removeEventListener('change', _dprListener);
+    else if (typeof _dprQuery.removeListener === 'function')
+      _dprQuery.removeListener(_dprListener);
   }
   _dprQuery = null;
   _dprListener = null;
@@ -319,7 +330,10 @@ function teardownDevicePixelRatioWatch() {
 export function scopeMaskGeometry(width, height, featherRatio = _featherRatio) {
   const keyhole = getKeyholeGeometry(width, height);
   if (!(keyhole.radius > 0)) return null;
-  const feather = Math.max(0, Math.min(1, Number(featherRatio) || 0));
+  const feather = Math.max(
+    0,
+    Math.min(SCOPE_FEATHER_RATIO_MAX, Number(featherRatio) || 0),
+  );
   // Feather straddles the keyhole edge so the visible radius stays anchored
   // to the shared geometry every keyhole consumer (labels, cards) fades on.
   const half = keyhole.radius * feather * 0.5;
@@ -328,13 +342,18 @@ export function scopeMaskGeometry(width, height, featherRatio = _featherRatio) {
     centerY: keyhole.centerY,
     innerR: Math.max(0, keyhole.radius - half),
     outerR: keyhole.radius + half,
-    maxR: Math.hypot(Math.max(keyhole.centerX, width - keyhole.centerX),
-      Math.max(keyhole.centerY, height - keyhole.centerY)),
+    maxR: Math.hypot(
+      Math.max(keyhole.centerX, width - keyhole.centerX),
+      Math.max(keyhole.centerY, height - keyhole.centerY),
+    ),
   };
 }
 
 function draw() {
-  if (_coalescingPaint) { _paintDirty = true; return; } // one paint at scope exit
+  if (_coalescingPaint) {
+    _paintDirty = true;
+    return;
+  } // one paint at scope exit
   if (!_canvas || !_container) return;
   // SCOPE OFF is the cheapest state, not a painted one: bail out BEFORE the
   // backing-store resize + clear (a full-viewport allocation) that used to run
@@ -366,7 +385,7 @@ function draw() {
   const { r, g, b } = SCOPE_OUTSIDE_COLOR;
   if (geo.outerR - geo.innerR < 1) {
     // Zero/near-zero feather: a radial gradient with equal radii is
-    // DEGENERATE in Canvas2D (Chromium paints nothing — review browser
+    // DEGENERATE in Canvas2D (Chromium paints nothing — browser
     // finding). Draw the hard crop explicitly: rect minus circle, evenodd.
     // The hard crop honors the same altitude terminus — a hard edge at city
     // scale must be fully opaque too, not 6% translucent.
@@ -379,14 +398,26 @@ function draw() {
     return;
   }
   const gradient = ctx.createRadialGradient(
-    geo.centerX, geo.centerY, geo.innerR,
-    geo.centerX, geo.centerY, geo.outerR,
+    geo.centerX,
+    geo.centerY,
+    geo.innerR,
+    geo.centerX,
+    geo.centerY,
+    geo.outerR,
   );
   gradient.addColorStop(0, `rgba(${r},${g},${b},0)`);
   gradient.addColorStop(1, `rgba(${r},${g},${b},${_terminusAlpha})`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
   _painted = true;
+}
+
+/** Expose only the OFF state; an absent attribute preserves the original HUD. */
+function syncScopeMaskAppearance(enabled = _enabled) {
+  const dataset = globalThis.document?.documentElement?.dataset;
+  if (!dataset) return;
+  if (enabled) delete dataset.scopeMask;
+  else dataset.scopeMask = 'off';
 }
 
 /**
@@ -396,6 +427,7 @@ function draw() {
  */
 export function installScopeMask(viewer) {
   if (_canvas || !viewer?.container) return;
+  syncScopeMaskAppearance();
   _container = viewer.container;
   _viewer = viewer;
   _canvas = document.createElement('canvas');
@@ -435,7 +467,8 @@ function watchCameraHeight(viewer) {
       // throttle bookkeeping, no quantize — the listener is a single compare.
       // setScopeMaskEnabled(true) re-syncs the alpha it skipped.
       if (!_enabled) return;
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const now =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (now - _lastTerminusSampleMs < SCOPE_TERMINUS_SAMPLE_MS) return;
       _lastTerminusSampleMs = now;
       updateScopeTerminusForHeight(currentCameraHeightM());
@@ -451,8 +484,14 @@ function watchCameraHeight(viewer) {
 }
 
 function teardownCameraHeightWatch() {
-  if (_cameraSampleRemover) { _cameraSampleRemover(); _cameraSampleRemover = null; }
-  if (_cameraMoveEndRemover) { _cameraMoveEndRemover(); _cameraMoveEndRemover = null; }
+  if (_cameraSampleRemover) {
+    _cameraSampleRemover();
+    _cameraSampleRemover = null;
+  }
+  if (_cameraMoveEndRemover) {
+    _cameraMoveEndRemover();
+    _cameraMoveEndRemover = null;
+  }
   _lastTerminusSampleMs = -Infinity;
 }
 
@@ -464,6 +503,7 @@ export function setScopeMaskEnabled(enabled) {
   const next = Boolean(enabled);
   const reEnabled = next && !_enabled;
   _enabled = next;
+  syncScopeMaskAppearance();
   if (reEnabled) {
     // The camera moved freely while the scope was off and nothing sampled it,
     // so the painted terminus can be a whole altitude band stale. Re-sync once
@@ -481,11 +521,14 @@ export function isScopeMaskEnabled() {
 }
 
 /**
- * @param {number} ratio - Edge feather as a fraction of keyhole radius [0,1].
+ * @param {number} ratio - Edge feather as a fraction of keyhole radius [0,2].
  * @returns {void}
  */
 export function setScopeMaskFeather(ratio) {
-  _featherRatio = Math.max(0, Math.min(1, Number(ratio) || 0));
+  _featherRatio = Math.max(
+    0,
+    Math.min(SCOPE_FEATHER_RATIO_MAX, Number(ratio) || 0),
+  );
   draw();
 }
 
@@ -499,6 +542,7 @@ export function getScopeMaskFeather() {
  * @returns {void}
  */
 export function destroyScopeMask() {
+  syncScopeMaskAppearance(true);
   _resizeObserver?.disconnect();
   _resizeObserver = null;
   teardownDevicePixelRatioWatch();
@@ -512,6 +556,7 @@ export function destroyScopeMask() {
 
 /** Test seam. */
 export function _resetScopeMaskForTest() {
+  syncScopeMaskAppearance(true);
   _resizeObserver?.disconnect();
   _resizeObserver = null;
   teardownDevicePixelRatioWatch();

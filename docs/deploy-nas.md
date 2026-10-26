@@ -6,7 +6,7 @@ wijziging op `main` **automatisch live**, binnen ongeveer 5 minuten (Taakplanner
 ```
 pull request  →  merge naar main
                      ↓
-NAS (elke 5 min):  git fetch  →  nieuwe versie op main?  →  docker compose up -d --build
+NAS (elke 5 min):  git fetch  →  nieuwe versie op main?  →  docker compose (deploy/compose.nas.yaml) up -d --build
                      ↓
 https://wharkema.nl/gods-eye-view  →  nginx (Web Station)  →  container (127.0.0.1:8019)  →  loginscherm  →  app
 ```
@@ -26,6 +26,41 @@ https://wharkema.nl/gods-eye-view  →  nginx (Web Station)  →  container (127
 
 Al geregeld voor TTD2026 en niet opnieuw nodig: Git, Container Manager, SSH op poort 2222, het certificaat
 voor `wharkema.nl` en de nginx-map van Web Station.
+
+**Deze fork volgt [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view).** Alle eigen
+aanpassingen (login, subpad, NAS-container, Map Labels, km/h en meters) staan achter één schakelaar,
+`GEV_SELF_HOSTING=1`, die alleen de NAS-container aanzet (`deploy/Dockerfile.nas`, `deploy/compose.nas.yaml`).
+De eigen code staat in `server/wharkema/`, `src/selfHosting/` en `src/layers/mapLabels/`. Zonder de schakelaar
+gedraagt de app zich precies als het hoofdproject, zodat updates van daar makkelijk over te nemen zijn.
+
+---
+
+## Overstappen van de oude versie (eenmalig)
+
+Draait de NAS nog de versie van vóór de overstap naar het hoofdproject? Doe dan precies dit, in deze volgorde.
+De oude Taakplanner-taak zou anders bij de eerste update het verkeerde compose-bestand starten.
+
+1. **Zet de Taakplanner-taak uit:** Configuratiescherm › Taakplanner › `gods-eye-view bijwerken` › vinkje
+   **Ingeschakeld** uit › OK.
+2. **Voeg de pull request samen** op GitHub (`wharkema:main`).
+3. **Werk de NAS bij** (SSH, als root):
+
+   ```sh
+   MAP=/volume1/docker/gods-eye-view
+   cd $MAP && git -c safe.directory=$MAP fetch origin main && git -c safe.directory=$MAP merge --ff-only origin/main
+   sh $MAP/deploy/nas-update.sh $MAP --forceer
+   ```
+
+   De eerste regel haalt alleen de nieuwe code op. Het oude script mag dat niet doen: dat zou daarna het
+   compose-bestand van het hoofdproject starten. De tweede regel draait het nieuwe script en bouwt de nieuwe
+   container. Dat duurt een paar minuten.
+4. **Controleer:** `docker ps --filter name=gods-eye-view` toont `(healthy)` en
+   `curl -s http://127.0.0.1:8019/api/health` geeft `{"status":"ok"}`.
+5. **Ruim de oude regel op** in `.env`: `PREVIEW_ALLOWED_HOSTS` en `OPENROUTER_API_KEY` worden niet meer
+   gebruikt (mag ook blijven staan).
+6. **Zet de Taakplanner-taak weer aan.**
+
+Het nginx-bestand, de poort (8019), het cache-volume en je `.env` blijven hetzelfde.
 
 ---
 
@@ -102,11 +137,19 @@ Vul in:
 | `FIRMS_MAP_KEY=` | dezelfde als op je pc (zonder `#` ervoor) |
 | `AISSTREAM_API_KEY=` | dezelfde als op je pc |
 | `TOMTOM_API_KEY=` | dezelfde als op je pc (zonder `#` ervoor) |
-| `OPENROUTER_API_KEY=` | dezelfde als op je pc |
 | `CARTO_API_KEY=` | de CARTO-sleutel voor de straat- en plaatsnamen (laag Map Labels) |
 
-`HOST`, `PORT`, de cookie-instellingen en `PREVIEW_ALLOWED_HOSTS` zet `docker-compose.yml` al goed; die hoef je
-niet in te vullen.
+Nieuw in het hoofdproject, allemaal optioneel:
+
+| Regel | Waarvoor | Waar te krijgen |
+|---|---|---|
+| `GEMINI_API_KEY=` | spraak met Gemini Live (kies "Gemini" in de MIC-keuze) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey), gratis te beginnen |
+| `MAPILLARY_CLIENT_TOKEN=` | straatfoto's (laag Street Level) | [mapillary.com/dashboard/developers](https://www.mapillary.com/dashboard/developers), gratis |
+| `GOOGLE_MAPS_SERVER_API_KEY=` | een aparte Google-sleutel voor de server (Places, Street View), te beperken op IP-adres | Google Cloud Console |
+| `OPENAI_API_KEY=` | spraak met OpenAI Realtime (betaald) | platform.openai.com |
+
+`HOST`, `PORT`, `GEV_SELF_HOSTING`, `GEV_ALLOWED_HOSTS`, de cookie-instellingen en `APP_TRUST_PROXY` zet
+`deploy/compose.nas.yaml` al goed; die hoef je niet in te vullen.
 
 Zet daarna de rechten goed. De laatste opdracht toont alleen de namen, zonder waarden:
 
@@ -196,7 +239,8 @@ Pas `.env` aan en bouw opnieuw:
 sh /volume1/docker/gods-eye-view/deploy/nas-update.sh /volume1/docker/gods-eye-view --forceer
 ```
 
-Dat is nodig omdat `GOOGLE_MAPS_API_KEY` en `CESIUM_ION_TOKEN` bij het bouwen in de app worden gezet. De
+Dat is nodig omdat `GOOGLE_MAPS_API_KEY`, `CESIUM_ION_TOKEN` en `MAPILLARY_CLIENT_TOKEN` bij het bouwen in de
+app worden gezet. De
 andere sleutels gelden na het opnieuw starten van de container, wat dezelfde opdracht ook doet.
 
 Een nieuw wachtwoord: maak een nieuwe regel met `node scripts/login.mjs hash` (stap 1), zet die in `.env` en
@@ -208,7 +252,7 @@ draai dezelfde opdracht. Alle bestaande sessies vervallen dan.
 |---|---|
 | 502 Bad Gateway | De container draait niet. Bekijk `docker ps -a` en `docker logs gods-eye-view`. |
 | `/gods-eye-view` geeft 301, maar `/gods-eye-view/` geeft 404 | Er staat `location /gods-eye-view/` zonder `^~`. Kopieer het bestand opnieuw (stap 7). |
-| *Blocked request. This host is not allowed* | Je opent de app via een ander adres dan `wharkema.nl`. Voeg dat adres toe aan `PREVIEW_ALLOWED_HOSTS` in `docker-compose.yml`. |
+| *Blocked request. This host is not allowed* | Je opent de app via een ander adres dan `wharkema.nl`. Voeg dat adres toe aan `GEV_ALLOWED_HOSTS` in `deploy/compose.nas.yaml`. |
 | Na inloggen kom je weer op het loginscherm | Open de site via **https**: het sessie-cookie is `Secure`. |
 | De aarde blijft leeg, in de console staat iets over de API key | Het adres staat niet bij de sleutel in Google Cloud (stap 5), of je hebt na het wijzigen van de sleutel niet met `--forceer` opnieuw gebouwd. |
 | Update-log: *detected dubious ownership* | De taak draait niet als **root**. |
@@ -218,7 +262,7 @@ draai dezelfde opdracht. Alle bestaande sessies vervallen dan.
 ## Weer weghalen
 
 ```sh
-cd $MAP && docker compose down --rmi local --volumes
+cd $MAP && docker compose --project-directory $MAP -f $MAP/deploy/compose.nas.yaml down --rmi local --volumes
 rm $NGINX/user.conf.$NAAM && nginx -t && nginx -s reload
 ```
 

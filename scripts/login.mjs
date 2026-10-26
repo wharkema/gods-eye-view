@@ -11,11 +11,15 @@
 
 import crypto from 'node:crypto';
 import readline from 'node:readline';
-import { hashWachtwoord } from '../src/login/auth.js';
+import { hashWachtwoord } from '../server/wharkema/login/auth.js';
 
 // One interface for every question: with piped input the lines arrive at
 // once, and a second interface would lose them.
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: Boolean(process.stdin.isTTY) });
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: Boolean(process.stdin.isTTY),
+});
 const regels = rl[Symbol.asyncIterator]();
 let stil = false;
 const schrijf = rl._writeToOutput?.bind(rl);
