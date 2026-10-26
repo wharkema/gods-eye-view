@@ -8,6 +8,7 @@ import { apiNotFoundPlugin } from './api-not-found.js';
 import { googleTokenUnavailablePlugin } from './google-token-unavailable.js';
 import { standaloneVoiceTools } from './voiceTools.js';
 import { unwatchedRuntimeDirsPlugin } from './unwatched-cache.js';
+import { applySelfHosting } from '../wharkema/hosting.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -18,7 +19,7 @@ export default defineConfig(({ command, mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
   const tools = standaloneVoiceTools();
-  return createBrowserViteConfig({
+  const config = createBrowserViteConfig({
     plugins: [
       ...localProviderPlugins({ realtime: { tools }, gemini: { tools } }),
       localMcpPlugin(),
@@ -34,4 +35,5 @@ export default defineConfig(({ command, mode }) => {
     allowedHosts: resolveAllowedHosts(process.env.GEV_ALLOWED_HOSTS),
     command,
   });
+  return applySelfHosting(config, { command });
 });

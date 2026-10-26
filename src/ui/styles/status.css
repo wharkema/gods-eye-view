@@ -53,6 +53,14 @@
   font-size: 18px;
 }
 
+#top-center-actions .logout-form {
+  display: contents;
+}
+
+#top-center-actions button[hidden] {
+  display: none;
+}
+
 #tilt-map-view[aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);

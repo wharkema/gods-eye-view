@@ -38,6 +38,12 @@
     <button id="reset-globe-view" type="button" aria-label="Reset to full globe view" title="Reset camera and return to full globe view" data-i18n-aria-label data-i18n-title>
       <span class="material-symbols-outlined" aria-hidden="true">public</span>
     </button>
+    <!-- Self-hosting: only shown when the server has the login on (src/selfHosting/logoutButton.js) -->
+    <form class="logout-form" method="post" action="uitloggen">
+      <button id="logout-btn" type="submit" aria-label="Uitloggen" title="Uitloggen" hidden>
+        <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+      </button>
+    </form>
   </nav>
   <div id="global-loading-status" role="status" aria-live="polite" aria-atomic="true" hidden>
     <span id="global-loading-label" data-i18n>LOADING LIVE DATA</span>
