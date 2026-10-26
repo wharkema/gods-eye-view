@@ -1,6 +1,7 @@
 import { resolveCatalogSources } from './sourceComposition.js';
 import { createWeatherClock } from '../layers/weather/clock.js';
 import { createWeatherLayer } from '../layers/weather/index.js';
+import { createMapLabelsLayer } from '../layers/mapLabels/index.js';
 import { createCyclonesLayer } from '../layers/cyclones/index.js';
 import { createWindLayer } from '../layers/wind/index.js';
 import { createLayerCatalog } from './catalog.js';
@@ -42,10 +43,20 @@ export const LOCAL_ONLY_LAYER_METADATA = Object.freeze([
   Object.freeze({ id: 'local-adsb', disposition: 'local-only' }),
 ]);
 
+/**
+ * Self-hosting fork layers (server/wharkema/hosting.js sets the flag). Local
+ * only: they never enter share links, so upstream's token ledger stays as is.
+ */
+const SELF_HOSTING = import.meta.env?.GEV_SELF_HOSTING === '1';
+const SELF_HOSTING_LAYER_METADATA = SELF_HOSTING
+  ? [Object.freeze({ id: 'map-labels', disposition: 'local-only' })]
+  : [];
+
 /** Serialization metadata for every layer the application catalog constructs. */
 export const APPLICATION_LAYER_METADATA = Object.freeze([
   ...LAYER_STATE_REGISTRY,
   ...LOCAL_ONLY_LAYER_METADATA,
+  ...SELF_HOSTING_LAYER_METADATA,
 ]);
 
 /** Construct the current catalog without choosing any source provider.
@@ -176,6 +187,7 @@ export function createApplicationCatalog({
           source: 'NASA FIRMS · LIVE',
           feed: sources.firms,
         }),
+        ...(SELF_HOSTING ? [createMapLabelsLayer()] : []),
       ],
       metadata,
     );

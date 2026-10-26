@@ -1,0 +1,40 @@
+# NAS deployment of this fork (https://wharkema.nl/gods-eye-view, see
+# docs/deploy-nas.md). Run from the repo root, as deploy/nas-update.sh does:
+#   docker compose --project-directory . -f deploy/compose.nas.yaml up -d --build
+# Upstream's ./compose.yaml (dev server on a bind-mounted checkout) is left as is.
+name: gods-eye-view
+services:
+  gods-eye-view:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.nas
+      # Client-side keys are compiled into the bundle at build time; compose reads them from .env
+      args:
+        GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+        CESIUM_ION_TOKEN: ${CESIUM_ION_TOKEN:-}
+        MAPILLARY_CLIENT_TOKEN: ${MAPILLARY_CLIENT_TOKEN:-}
+    image: gods-eye-view:latest
+    container_name: gods-eye-view
+    restart: unless-stopped
+    # API keys and the login account; only on the NAS, never in git
+    env_file: .env
+    environment:
+      GEV_SELF_HOSTING: "1"
+      APP_LOGIN_VERPLICHT: "1"
+      APP_COOKIE_SECURE: "1"
+      APP_COOKIE_PAD: /gods-eye-view
+      # Requests come through the NAS's own nginx; after login, treat them as same-origin
+      APP_TRUST_PROXY: "1"
+      HOST: 0.0.0.0
+      PORT: "4173"
+      # Host header from nginx; IP addresses and localhost are always allowed
+      GEV_ALLOWED_HOSTS: wharkema.nl
+    # Only reachable through the NAS itself (the reverse proxy), not directly from the network
+    ports:
+      - "127.0.0.1:8019:4173"
+    # TomTom tile cache, Overpass cache and the TomTom daily budget survive a rebuild
+    volumes:
+      - gev-cache:/app/.gev-cache
+
+volumes:
+  gev-cache:

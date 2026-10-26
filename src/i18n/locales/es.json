@@ -2952,5 +2952,7 @@
   "Layers": "Capas",
   "Search": "Buscar",
   "More": "Más",
-  "Panels": "Paneles"
+  "Panels": "Paneles",
+  "Log out": "Cerrar sesión",
+  "Log out ({user})": "Cerrar sesión ({user})"
 }

@@ -29,10 +29,13 @@ fi
 
 git merge --ff-only --quiet origin/main
 
+# The NAS compose file lives in deploy/; the repo root stays the project
+# directory, so .env is read from there. (./compose.yaml is upstream's dev setup.)
+COMPOSE_ARGS="--project-directory $MAP -f $MAP/deploy/compose.nas.yaml"
 if docker compose version >/dev/null 2>&1; then
-  docker compose up -d --build --remove-orphans
+  docker compose $COMPOSE_ARGS up -d --build --remove-orphans
 else
-  docker-compose up -d --build --remove-orphans
+  docker-compose $COMPOSE_ARGS up -d --build --remove-orphans
 fi
 docker image prune -f >/dev/null 2>&1 || true
 echo "$(date '+%Y-%m-%d %H:%M:%S') bijgewerkt naar $(git rev-parse --short HEAD)"

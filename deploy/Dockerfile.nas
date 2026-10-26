@@ -1,5 +1,5 @@
 # Production container for the Synology NAS (docs/deploy-nas.md), used by
-# compose.yaml. Upstream's ./Dockerfile runs the Vite dev server on a
+# deploy/compose.nas.yaml. Upstream's ./Dockerfile runs the Vite dev server on a
 # bind-mounted checkout; the NAS instead builds once and serves the build with
 # `vite preview` behind nginx on https://wharkema.nl/gods-eye-view.
 FROM node:24-bookworm-slim
@@ -8,6 +8,9 @@ FROM node:24-bookworm-slim
 ENV PUPPETEER_SKIP_DOWNLOAD=1 \
     NPM_CONFIG_UPDATE_NOTIFIER=false \
     NPM_CONFIG_FUND=false \
+    # The fork's self-hosting layer (server/wharkema/hosting.js): login, relative
+    # build base, preview providers, Map Labels
+    GEV_SELF_HOSTING=1 \
     # On the internet always log in: without accounts in .env the server does not start
     APP_LOGIN_VERPLICHT=1
 
@@ -21,7 +24,7 @@ RUN npm ci --no-audit
 COPY --chown=node:node . .
 
 # The Google, Cesium and Mapillary client keys are compiled into the browser
-# bundle (client-side keys by design). compose.yaml passes them in from .env.
+# bundle (client-side keys by design). deploy/compose.nas.yaml passes them in from .env.
 ARG GOOGLE_MAPS_API_KEY=""
 ARG CESIUM_ION_TOKEN=""
 ARG MAPILLARY_CLIENT_TOKEN=""

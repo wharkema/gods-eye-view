@@ -28,3 +28,7 @@ pinokio/.installed
 
 # Transient: a release interrupted mid-assembly (npm run changelog recovers it)
 changelog.d/.assembling/
+
+# Your own camera lists (e.g. config/cctv_sources.local.json).
+# Never in git: this repo is public and they may hold private camera URLs.
+config/*.local.json

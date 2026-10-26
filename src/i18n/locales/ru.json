@@ -3019,5 +3019,7 @@
   "Layers": "Слои",
   "Search": "Поиск",
   "More": "Ещё",
-  "Panels": "Панели"
+  "Panels": "Панели",
+  "Log out": "Выйти",
+  "Log out ({user})": "Выйти ({user})"
 }

@@ -1,41 +1,29 @@
-# NAS deployment of this fork (https://wharkema.nl/gods-eye-view, see
-# docs/deploy-nas.md). Upstream's compose.yaml runs the dev server on a
-# bind-mounted checkout for local use; this fork replaces it with the
-# production container, because deploy/nas-update.sh runs `docker compose`
-# in the repo root. For local development use `npm run dev`.
 services:
   gods-eye-view:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.nas
-      # Client-side keys are compiled into the bundle at build time; compose reads them from .env
-      args:
-        GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
-        CESIUM_ION_TOKEN: ${CESIUM_ION_TOKEN:-}
-        MAPILLARY_CLIENT_TOKEN: ${MAPILLARY_CLIENT_TOKEN:-}
-    image: gods-eye-view:latest
-    container_name: gods-eye-view
-    restart: unless-stopped
-    # API keys and the login account; only on the NAS, never in git
-    env_file: .env
+    build: .
+    # Everything the app writes (.env with your keys, .gev-cache, .gev-logs)
+    # lands in the bind-mounted repo, so run as you, not root. UID/GID are
+    # unset on Docker Desktop, where the 1000 fallback is ignored anyway.
+    user: "${UID:-1000}:${GID:-1000}"
+    # Forward explicit shell/.env policy before the launcher discovers a gateway.
+    # Unset values stay unset so the default loopback-only install still works.
     environment:
-      APP_LOGIN_VERPLICHT: "1"
-      APP_COOKIE_SECURE: "1"
-      APP_COOKIE_PAD: /gods-eye-view
-      # Requests come through the NAS's own nginx; after login, treat them as same-origin
-      APP_TRUST_PROXY: "1"
-      HOST: 0.0.0.0
-      PORT: "4173"
-      # Host header from nginx; IP addresses and localhost are always allowed
-      GEV_ALLOWED_HOSTS: wharkema.nl
-      # Keys live in .env on the NAS: never let a browser write them
-      GEV_KEY_SETUP_TRUSTED_PEERS: none
-    # Only reachable through the NAS itself (the reverse proxy), not directly from the network
+      - GEV_KEY_SETUP_TRUSTED_PEERS
+      - GEV_ALLOWED_HOSTS
     ports:
-      - "127.0.0.1:8019:4173"
-    # TomTom tile cache, Overpass cache and the TomTom daily budget survive a rebuild
+      # Publish to loopback only. Docker's default ("4173:4173") would bind
+      # every host interface, which quietly turns the LAN warning in the README
+      # into the default: this server brokers whatever provider keys you have
+      # configured to anyone who can reach it. Widen this deliberately, not by
+      # accident.
+      - "127.0.0.1:4173:4173"
     volumes:
-      - gev-cache:/app/.gev-cache
-
-volumes:
-  gev-cache:
+      # Bind the source so edits hot-reload and so keys pasted into the setup
+      # UI land in the .env on your host instead of vanishing with the
+      # container. node_modules stays in the image: sharp and friends are
+      # compiled for Linux and must not be shadowed by a host install.
+      # `:z` relabels the checkout for containers on SELinux hosts (Fedora,
+      # RHEL); without it the container cannot read /app at all and Node
+      # reports the launcher as "Cannot find module". Elsewhere it is ignored.
+      - .:/app:z
+      - /app/node_modules
