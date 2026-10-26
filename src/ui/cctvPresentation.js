@@ -3,6 +3,12 @@ import { t, tn } from '../i18n/index.js';
 import { cctvSourceLabelText, cctvSourceMessageText } from './cctvFrames.js';
 
 import { createCctvVideoSurface } from './cctvVideo.js';
+import {
+  CCTV_GROUPED,
+  cctvCountryIndex,
+  cctvListEntries,
+  loadCctvCountryIndex,
+} from '../selfHosting/cctvList.js';
 export function _calBadgeLabel(badge) {
   switch (badge) {
     case 'calibrated':
@@ -59,17 +65,37 @@ export function _renderCctvState(state) {
   }
 
   if (this._cctvSelect) {
+    // Self-hosting fork: "NL | Amsterdam | camera", sorted by country and
+    // city (src/selfHosting/cctvList.js); upstream keeps "City · Name".
+    let countryIndex = null;
+    if (CCTV_GROUPED) {
+      countryIndex = cctvCountryIndex();
+      if (!countryIndex && !this._cctvCountryLoad && cameras.length > 0) {
+        this._cctvCountryLoad = loadCctvCountryIndex().then((index) => {
+          if (index && this._cctvState && !this.destroyed)
+            this._renderCctvState(this._cctvState);
+        });
+      }
+    }
+    const entries = CCTV_GROUPED
+      ? cctvListEntries(cameras, countryIndex)
+      : cameras.map((camera) => ({
+          id: camera.id,
+          label: `${camera.city} · ${camera.name}`,
+        }));
     const shouldRebuild =
-      this._cctvSelect.options.length !== cameras.length ||
-      cameras.some(
-        (cam, idx) => this._cctvSelect.options[idx]?.value !== cam.id,
+      this._cctvSelect.options.length !== entries.length ||
+      entries.some(
+        (entry, idx) =>
+          this._cctvSelect.options[idx]?.value !== entry.id ||
+          this._cctvSelect.options[idx]?.textContent !== entry.label,
       );
     if (shouldRebuild) {
       this._cctvSelect.innerHTML = '';
-      for (const camera of cameras) {
+      for (const entry of entries) {
         const option = document.createElement('option');
-        option.value = camera.id;
-        option.textContent = `${camera.city} · ${camera.name}`;
+        option.value = entry.id;
+        option.textContent = entry.label;
         this._cctvSelect.appendChild(option);
       }
     }
