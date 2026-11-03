@@ -14,7 +14,16 @@ onMounted(async () => {
 
 <template>
   <form v-if="session" class="logout-form" method="post" action="uitloggen">
-    <button id="logout-btn" type="submit" :aria-label="t('Log out')" :title="session.gebruiker ? t('Log out ({user})', { user: session.gebruiker }) : t('Log out')">
+    <button
+      id="logout-btn"
+      type="submit"
+      :aria-label="t('Log out')"
+      :title="
+        session.gebruiker
+          ? t('Log out ({user})', { user: session.gebruiker })
+          : t('Log out')
+      "
+    >
       <span class="material-symbols-outlined" aria-hidden="true">logout</span>
     </button>
   </form>
