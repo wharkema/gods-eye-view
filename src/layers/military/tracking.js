@@ -25,6 +25,7 @@ import {
   AMBER_TRANSPARENT,
   TRACKED_ICON_COLOR,
 } from './policy.js';
+import { roundHeadingDegrees } from '../../data/headingDegrees.js';
 import { METRIC_DISPLAY, formatSpeedMps } from '../../selfHosting/units.js';
 
 export function createTracking({
@@ -123,7 +124,7 @@ export function createTracking({
             ? `${Math.round(described.velocityMps * 1.94384)} kt (${Math.round(described.velocityMps * 3.6)} km/h)`
             : `${Math.round(described.velocityMps * 1.944)} kt`,
         heading: Number.isFinite(described.track)
-          ? `${Math.round(described.track)}°`
+          ? `${roundHeadingDegrees(described.track)}°`
           : '',
         icao24,
         // Honesty cue: the contact is coasting on dead reckoning, so the

@@ -11,11 +11,14 @@
  *  - a build uses a relative base, so one build serves at the site root and
  *    behind nginx on a sub-path (src/basePath.js covers root-absolute URLs);
  *  - `vite preview` gets the same host, port and Host allowlist as dev;
- *  - the CARTO label proxy for the Map Labels layer (CARTO_API_KEY).
+ *  - the CARTO label proxy for the Map Labels layer (CARTO_API_KEY);
+ *  - index.html and short share links work under the sub-path
+ *    (subPathHtml.js).
  */
 import { loginGate } from './login/plugin.js';
 import { alsoServeInPreview } from './preview.js';
 import { cartoLabelsProxy } from './cartoLabels.js';
+import { sharePathPreview, subPathHtml } from './subPathHtml.js';
 
 /**
  * @param {import('vite').UserConfig} config - From createBrowserViteConfig.
@@ -38,6 +41,7 @@ export function applySelfHosting(config, { command, env = process.env } = {}) {
     (plugin) => plugin?.name === 'host-check',
   );
   plugins.splice(hostCheck + 1, 0, loginGate());
+  plugins.push(subPathHtml(), sharePathPreview());
   return {
     ...config,
     plugins,
