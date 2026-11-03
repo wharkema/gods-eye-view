@@ -149,7 +149,9 @@
       "src/ui/views/panels/GlobeCompass.vue",
       "src/ui/stores/recording.js",
       "src/ui/styleParameters.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/selfHosting/logoutButton.js",
+      "src/selfHosting/LogoutButton.vue"
     ],
     "external": ["vue", "pinia", "vue-i18n"]
   },
@@ -877,7 +879,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/selfHosting/units.js"
     ],
     "external": ["cesium"]
   },
@@ -1130,7 +1133,8 @@
       "src/ui/kit/UiBadge.vue",
       "src/ui/stores/globeActions.js",
       "src/ui/stores/recording.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/selfHosting/units.js"
     ],
     "external": ["cesium", "vue", "pinia", "vue-i18n"]
   },
@@ -1341,7 +1345,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/selfHosting/units.js"
     ],
     "external": ["cesium"]
   },
@@ -1397,7 +1402,9 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/ui/unitLabels.js",
+      "src/selfHosting/units.js"
     ],
     "external": ["cesium"]
   },
@@ -1468,7 +1475,9 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/ui/unitLabels.js",
+      "src/selfHosting/units.js"
     ],
     "external": ["cesium"]
   },
@@ -3204,7 +3213,9 @@
       "src/voice/osmActions.js",
       "src/layers/osmPlaces/index.js",
       "src/app/layers/osmPlaces.js",
-      "src/voice/areaActions.js"
+      "src/voice/areaActions.js",
+      "src/layers/mapLabels/index.js",
+      "src/selfHosting/units.js"
     ],
     "external": [
       "hls.js",
@@ -3815,7 +3826,9 @@
       "src/data/local_data/wof_neighborhoods/files.js",
       "src/layers/osmPlaces/model.js",
       "src/layers/osmPlaces/index.js",
-      "src/app/layers/osmPlaces.js"
+      "src/app/layers/osmPlaces.js",
+      "src/layers/mapLabels/index.js",
+      "src/selfHosting/units.js"
     ],
     "external": [
       "hls.js",
